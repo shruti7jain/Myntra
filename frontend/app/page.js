@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [selectedTheme, setSelectedTheme] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [justRefreshed, setJustRefreshed] = useState(false);
 
   // Chat Copilot State
   const [messages, setMessages] = useState([
