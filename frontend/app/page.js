@@ -290,25 +290,21 @@ export default function Dashboard() {
                     >
                       <div className="flex items-center justify-between text-sm mb-2">
                         <div className="flex items-center gap-2">
-                          <span className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-[#ff3f6c]' : (idx === 0 ? 'bg-[#ff3f6c]' : 'bg-[#282c3f]')}`}></span>
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#ff3f6c]"></span>
                           <span className="font-bold text-[#282c3f]">{cat.category}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-mono font-medium text-[#535766]">{cat.count} verbatims</span>
-                          <span className="text-xs font-black text-[#282c3f] px-2 py-0.5 bg-white border border-[#eaeaec] rounded-md">
+                          <span className="text-xs font-black text-[#ff3f6c] px-2 py-0.5 bg-[#fff0f3] border border-[#ff3f6c]/20 rounded-md">
                             {cat.pct}%
                           </span>
                         </div>
                       </div>
 
                       {/* Bar */}
-                      <div className="w-full h-3 bg-[#eaeaec] rounded-full overflow-hidden">
+                      <div className="w-full h-3 bg-[#fce4ec]/60 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full rounded-full transition-all duration-700 ${
-                            isSelected || idx === 0 
-                              ? 'bg-gradient-to-r from-[#ff3f6c] to-[#ff527b]' 
-                              : 'bg-gradient-to-r from-[#282c3f] to-[#535766]'
-                          }`}
+                          className="h-full rounded-full transition-all duration-700 bg-gradient-to-r from-[#ff3f6c] to-[#ff527b]"
                           style={{ width: `${barWidthPct}%` }}
                         />
                       </div>
@@ -412,13 +408,9 @@ export default function Dashboard() {
                       </div>
 
                       {/* Progress Bar (Myntra Pink Gradients) */}
-                      <div className="w-full h-2.5 bg-[#eaeaec] rounded-full overflow-hidden">
+                      <div className="w-full h-2.5 bg-[#fce4ec]/60 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            idx === 0 
-                              ? 'bg-[#ff3f6c]' 
-                              : (idx === 1 ? 'bg-[#ff527b]' : (idx === 2 ? 'bg-[#ff7597]' : 'bg-[#535766]'))
-                          }`}
+                          className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-[#ff3f6c] to-[#ff527b]"
                           style={{ width: `${item.pct_of_total}%` }}
                         />
                       </div>
