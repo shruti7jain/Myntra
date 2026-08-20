@@ -1,0 +1,20 @@
+# ==============================================================================
+# MYNTRA WISHLIST AI DISCOVERY ENGINE - DEPENDENCIES
+# ==============================================================================
+
+# Database & Supabase
+supabase>=2.0.0
+psycopg2-binary>=2.9.9
+
+# Ingestion & Scraping
+google-play-scraper>=1.2.4
+apify-client>=1.6.0
+requests>=2.31.0
+
+# AI & LLM Inference
+groq>=0.11.0
+pydantic>=2.5.0
+tenacity>=8.2.3
+
+# Utilities
+python-dotenv>=1.0.0

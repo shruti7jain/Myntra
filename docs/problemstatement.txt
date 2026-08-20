@@ -1,0 +1,199 @@
+PROJECT: AI-Powered Discovery Engine for Myntra Wishlist-to-Purchase Conversion
+PART: 1 — Build an AI-Powered Discovery Engine
+
+ROLE AND CONTEXT
+You are a Product Manager on the Growth Team at Myntra.
+
+Myntra has millions of users who browse fashion products, save items they like, and add products to their wishlists. A wishlist is an important high-intent signal because the user has explicitly expressed interest in a product but has not yet purchased it.
+
+The business objective is to increase the percentage of users who purchase at least one item from their wishlist within 30 days of adding it.
+
+However, the underlying user problem is NOT provided. The purpose of Part 1 is to discover that problem before proposing a solution.
+
+PART 1 OBJECTIVE
+Build an AI-powered Discovery Engine that analyzes public user conversations at scale to identify, quantify where possible, compare, and prioritize potential user problems and opportunity areas that may influence wishlist-to-purchase conversion.
+
+The Discovery Engine must go beyond simple review summarization or sentiment analysis. It should convert unstructured user conversations into structured, evidence-backed insights that can support product decision-making.
+
+RESEARCH SOURCE CONSTRAINT
+For this project, the Discovery Engine must use ONLY the following four source types:
+
+1. Apple App Store reviews
+2. Google Play Store reviews
+3. Reddit discussions/comments
+4. YouTube comments
+
+Do not use other external discovery sources for the engine unless this constraint is explicitly changed later.
+
+CORE DISCOVERY QUESTIONS
+The engine should help investigate the following questions:
+
+1. Why do users add fashion products to their wishlist?
+2. What prevents wishlisted products from eventually being purchased?
+3. What uncertainties remain after a user has identified a product they like?
+4. What causes users to postpone a purchase?
+5. How do users compare multiple shortlisted or wishlisted products?
+6. What information do users seek outside Myntra before purchasing?
+7. What role do fit and size, styling, price, reviews, occasion, and social validation play in purchase decisions?
+8. When is the wishlist used as genuine purchase intent versus simple bookmarking or saving for later?
+9. How do these behaviors differ across meaningful user segments?
+10. What unmet needs appear repeatedly across user conversations?
+11. Which opportunity areas appear most likely to influence wishlist-to-purchase conversion?
+
+WHAT THE ENGINE SHOULD DO
+The system should create a repeatable workflow that can:
+
+A. Collect or ingest user conversations from the four allowed sources.
+
+B. Clean and normalize the collected text while preserving the original evidence and source context.
+
+C. Identify relevant conversations related to fashion shopping, wishlisting/saving, purchase hesitation, purchase decision-making, and post-save behavior.
+
+D. Extract structured signals from each relevant conversation, such as:
+   - User intent
+   - Reason for saving/wishlisting
+   - Purchase intent
+   - Purchase blocker
+   - Uncertainty
+   - Information need
+   - Consideration of alternatives
+   - Current workaround
+   - Trigger for purchase
+   - Trigger for postponement
+   - Context/occasion
+   - Product/category context where available
+
+E. Cluster recurring problems and unmet needs into coherent opportunity themes.
+
+F. Distinguish between different use cases of the wishlist, especially:
+   - High-intent purchase consideration
+   - Comparison/shortlisting
+   - Price or timing monitoring
+   - Bookmarking/inspiration
+   - Temporary saving with no clear purchase intent
+
+G. Segment insights where the available evidence supports meaningful differences, for example by shopping context, user need, product category, or behavioral intent. Do not create unsupported demographic segments.
+
+H. Quantify opportunity areas where possible. Quantification should include the denominator, source volume, and calculation logic so that percentages are interpretable and auditable.
+
+I. Compare opportunity areas using a consistent prioritization method based on evidence and potential relevance to the business metric.
+
+J. Preserve traceability from each major insight back to the underlying source evidence. Every important insight should be supported by examples or source references.
+
+K. Produce a structured output that can be used by a Product Manager to decide which opportunity should be validated through primary user research.
+
+RECOMMENDED ANALYSIS PIPELINE
+The engine should follow a pipeline similar to:
+
+Source Collection
+→ Data Cleaning
+→ Relevance Filtering
+→ User Intent/Behavior Extraction
+→ Problem & Pain-Point Extraction
+→ Thematic Clustering
+→ User/Need Segmentation
+→ Evidence Quantification
+→ Opportunity Comparison/Prioritization
+→ Evidence-Backed Discovery Report
+
+IMPORTANT DISTINCTIONS
+The engine must not assume that every wishlist item represents strong purchase intent.
+
+The engine must distinguish:
+- "User likes the product" from "User intends to purchase the product"
+- "User is postponing purchase" from "User has no purchase intent"
+- "User needs more information" from "User simply wants a bookmark"
+- "Price is mentioned" from "Price uncertainty is actually preventing purchase"
+
+The system must avoid treating sentiment alone as the problem. A negative review does not automatically represent a wishlist-to-purchase problem.
+
+The engine should focus on behavioral barriers, unmet needs, uncertainties, decision friction, and workarounds that are plausibly connected to the journey from wishlist/save to purchase.
+
+OPPORTUNITY AREAS TO INVESTIGATE
+Do not assume these are the final problems. Treat them as hypotheses to investigate through evidence:
+
+- Fit and size confidence
+- Product quality confidence
+- Price uncertainty or waiting for a better price
+- Uncertainty about whether the product is worth buying
+- Difficulty comparing shortlisted products
+- Lack of styling or outfit context
+- Occasion-based uncertainty
+- Insufficient reviews or social proof
+- Lack of trustworthy user-generated information
+- Availability/size/color uncertainty
+- Waiting for the right moment to purchase
+- Wishlist overload and difficulty revisiting saved products
+- Saving products primarily for bookmarking rather than purchase
+- Need for information outside the app before purchase
+- Other recurring barriers discovered from user conversations
+
+EXPECTED OUTPUT OF THE DISCOVERY ENGINE
+The engine should produce a structured discovery output containing at minimum:
+
+1. Executive summary of the strongest findings.
+2. Top recurring user problems/opportunity themes.
+3. Evidence volume for each theme.
+4. Relative prevalence or estimated share where measurable.
+5. Representative source evidence for each important theme.
+6. User intent/behavior associated with each theme.
+7. Existing user workaround, when observable.
+8. Relevant user segment or context, when supported by evidence.
+9. Estimated relationship to wishlist-to-purchase conversion, clearly labeled as evidence, inference, or hypothesis.
+10. Opportunity prioritization/comparison.
+11. Recommended opportunity area(s) for primary user research.
+12. Clear list of unresolved questions that interviews need to validate.
+
+EVIDENCE AND TRUST REQUIREMENTS
+Every major conclusion must be traceable to collected evidence.
+
+The system should:
+- Keep source attribution.
+- Store source text or a suitable excerpt/reference where permitted.
+- Separate observed evidence from AI-generated interpretation.
+- Label assumptions and hypotheses clearly.
+- Avoid fabricating user feedback.
+- Avoid presenting unsupported percentages as facts.
+- Avoid overgeneralizing from a small or biased sample.
+
+MVP EXPECTATION FOR PART 1
+Build the simplest functional version of the Discovery Engine that demonstrates the full flow from the four allowed sources to structured, prioritized opportunity insights.
+
+The goal of Part 1 is NOT to design the final Myntra feature.
+The goal is to build a reliable discovery system that helps answer:
+
+"What user problem is most likely preventing wishlist items from becoming purchases within 30 days, and what evidence supports that conclusion?"
+
+OUT OF SCOPE FOR PART 1
+Do not:
+- Design the final product solution before discovery.
+- Assume a specific root cause without evidence.
+- Introduce monetary incentives.
+- Rely only on sentiment analysis.
+- Treat review ratings as a substitute for behavioral research.
+- Use sources outside App Store, Play Store, Reddit, and YouTube comments.
+- Treat AI-generated hypotheses as validated user truths.
+
+SUCCESS CRITERIA FOR THE DISCOVERY ENGINE
+The Part 1 system should be considered successful when it can:
+
+1. Process relevant user conversations from the four permitted source types.
+2. Identify recurring purchase barriers and unmet needs.
+3. Distinguish different wishlist intents and behaviors.
+4. Quantify or estimate prevalence where the data supports it.
+5. Compare and prioritize opportunity areas using a transparent method.
+6. Show source-level evidence for key conclusions.
+7. Produce a shortlist of high-potential problems that can be taken into 5–6 user interviews for validation.
+
+FINAL DECISION OUTPUT
+At the end of Part 1, the Discovery Engine should help the Product Manager move from:
+
+Raw user conversations
+→ Evidence
+→ Behavioral patterns
+→ Problem themes
+→ Opportunity areas
+→ Prioritized hypotheses
+→ Interview questions for validation
+
+The selected problem must ultimately be determined through the combination of AI discovery evidence and primary user research, not by assumption.
