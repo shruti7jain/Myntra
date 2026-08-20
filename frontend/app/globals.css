@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #0d0e12;
-  --foreground: #f3f4f6;
+  --background: #f8f9fb;
+  --foreground: #282c3f;
 }
 
 body {
@@ -19,26 +19,27 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #121217;
+  background: #f1f2f6;
 }
 ::-webkit-scrollbar-thumb {
-  background: #282834;
+  background: #d4d5d9;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #ff3f6c;
 }
 
-.glass-card {
-  background: rgba(24, 24, 32, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.myntra-card {
+  background: #ffffff;
+  border: 1px solid #eaeaec;
+  box-shadow: 0 2px 8px rgba(40, 44, 63, 0.04);
 }
 
-.glass-card-hover {
+.myntra-card-hover {
   transition: all 0.2s ease-in-out;
 }
-.glass-card-hover:hover {
-  border-color: rgba(255, 63, 108, 0.3);
-  transform: translateY(-2px);
+.myntra-card-hover:hover {
+  border-color: #ff3f6c;
+  box-shadow: 0 4px 16px rgba(255, 63, 108, 0.08);
+  transform: translateY(-1px);
 }
