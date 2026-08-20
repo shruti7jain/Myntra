@@ -89,54 +89,28 @@ export default function Dashboard() {
     }
   };
 
-  const getThemeGradient = (index) => {
-    const gradients = [
-      'bg-gradient-to-r from-[#ff3f6c] to-[#ff6584]',
-      'bg-gradient-to-r from-[#ff6b8b] to-[#ffa36c]',
-      'bg-gradient-to-r from-[#ff7e5f] to-[#feb47b]',
-      'bg-gradient-to-r from-[#6a82fb] to-[#fc5c7d]',
-      'bg-gradient-to-r from-[#11998e] to-[#38ef7d]',
-      'bg-gradient-to-r from-[#8e2de2] to-[#4a00e0]',
-      'bg-gradient-to-r from-[#7f8c8d] to-[#95a5a6]'
-    ];
-    return gradients[index % gradients.length];
-  };
-
-  const getCategoryTheme = (name) => {
-    switch (name) {
-      case 'Ethnic Wear': return { bar: 'bg-gradient-to-r from-[#ff3f6c] to-[#ff6584]', text: 'text-[#ff3f6c]', border: 'border-[#ff3f6c]/20', bg: 'bg-[#fff0f3]' };
-      case 'Western Wear': return { bar: 'bg-gradient-to-r from-[#5352ed] to-[#70a1ff]', text: 'text-[#5352ed]', border: 'border-[#5352ed]/20', bg: 'bg-[#f1f2fe]' };
-      case 'Dresses': return { bar: 'bg-gradient-to-r from-[#a55eea] to-[#ff78cb]', text: 'text-[#a55eea]', border: 'border-[#a55eea]/20', bg: 'bg-[#faf2ff]' };
-      case 'Footwear': return { bar: 'bg-gradient-to-r from-[#ff9f43] to-[#feb47b]', text: 'text-[#ff9f43]', border: 'border-[#ff9f43]/20', bg: 'bg-[#fff7f0]' };
-      default: return { bar: 'bg-gradient-to-r from-[#20bf6b] to-[#2ed573]', text: 'text-[#20bf6b]', border: 'border-[#20bf6b]/20', bg: 'bg-[#f0faf4]' };
-    }
-  };
-
+  // Top 3 priority non-monetary product levers
   const getProductLever = (themeKey) => {
     switch (themeKey) {
       case 'fabric_quality_ambiguity':
         return {
           lever: 'Fabric Opacity & Tactile Gauge',
-          desc: '1-5 Sheerness Scale, fabric GSM thickness badge, and wash durability customer tags.',
-          badgeColor: 'bg-[#fff0f3] text-[#ff3f6c] border-[#ff3f6c]/20'
+          desc: '1-5 Sheerness Scale, fabric GSM thickness badge, and wash durability customer tags.'
         };
       case 'visual_reality_discrepancy':
         return {
           lever: 'Natural Daylight Photo Reviews',
-          desc: 'Filter customer photos by natural daylight vs indoor studio lighting to eliminate color doubt.',
-          badgeColor: 'bg-[#f1f2fe] text-[#5352ed] border-[#5352ed]/20'
+          desc: 'Filter customer photos by natural daylight vs indoor studio lighting to eliminate color doubt.'
         };
       case 'fit_sizing_anxiety':
         return {
           lever: 'AI Body-Measurement TrueFit',
-          desc: 'Shoulder/bust match confidence score calibrated against past non-returned orders.',
-          badgeColor: 'bg-[#fff7f0] text-[#e67e22] border-[#ff9f43]/20'
+          desc: 'Shoulder/bust match confidence score calibrated against past non-returned orders.'
         };
       default:
         return {
           lever: 'Contextual Non-Monetary Trigger',
-          desc: 'Decision-support clarity indicator.',
-          badgeColor: 'bg-[#f8f9fa] text-[#282c3f] border-[#eaeaec]'
+          desc: 'Decision-support clarity indicator.'
         };
     }
   };
@@ -182,15 +156,15 @@ export default function Dashboard() {
   const maxCategoryCount = Math.max(...categoryChartData.map(c => c.count), 1);
 
   return (
-    <div className="min-h-screen bg-[#f8f9fb] text-[#282c3f] p-4 md:p-8">
+    <div className="min-h-screen bg-[#f5f5f6] text-[#282c3f] p-4 md:p-8 font-sans">
       {/* Top Header */}
-      <header className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between pb-6 border-b border-[#eaeaec] gap-4 bg-white p-6 rounded-2xl shadow-sm">
+      <header className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between pb-6 border-b border-[#eaeaec] gap-4 bg-white p-6 rounded-2xl shadow-xs">
         <div>
           <div className="flex items-center gap-3">
             <span className="px-3 py-1 bg-[#fff0f3] text-[#ff3f6c] border border-[#ff3f6c]/20 rounded-full text-xs font-bold tracking-wide uppercase flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" /> Myntra PM Growth Intelligence
             </span>
-            <span className="px-2.5 py-1 bg-[#f4f6f8] text-[#535766] rounded-full text-xs font-medium border border-[#eaeaec]">
+            <span className="px-2.5 py-1 bg-[#f4f6f8] text-[#535766] rounded-full text-xs font-semibold border border-[#eaeaec]">
               Discovery Engine
             </span>
           </div>
@@ -206,7 +180,7 @@ export default function Dashboard() {
           <button 
             onClick={fetchInsights} 
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-[#f8f9fb] border border-[#d4d5d9] hover:border-[#ff3f6c] text-sm font-semibold rounded-xl transition-all text-[#282c3f] shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-[#fff0f3] border border-[#d4d5d9] hover:border-[#ff3f6c] text-sm font-bold rounded-xl transition-all text-[#282c3f] hover:text-[#ff3f6c] shadow-2xs"
           >
             <RefreshCw className={`w-4 h-4 text-[#ff3f6c] ${loading ? 'animate-spin' : ''}`} />
             {loading ? 'Syncing...' : 'Refresh Insights'}
@@ -215,9 +189,9 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto mt-6 space-y-8">
-        {/* Executive KPI Cards */}
+        {/* Executive KPI Cards (Strict Myntra Palette: White, Pink, Black, Gray) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-2xl border border-[#eaeaec] shadow-sm relative overflow-hidden">
+          <div className="bg-white p-5 rounded-2xl border border-[#eaeaec] shadow-xs relative overflow-hidden">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#94969f] uppercase tracking-wider">Total VoC Analyzed</span>
               <div className="w-8 h-8 rounded-lg bg-[#fff0f3] flex items-center justify-center">
@@ -225,49 +199,49 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="text-3xl font-black text-[#282c3f] mt-2">1,486</div>
-            <div className="text-xs text-[#20bf6b] mt-2 flex items-center gap-1 font-semibold">
-              <CheckCircle2 className="w-3.5 h-3.5" /> 100% Normalized & Processed
+            <div className="text-xs text-[#282c3f] mt-2 flex items-center gap-1 font-semibold">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#ff3f6c]" /> 100% Normalized in Database
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-[#eaeaec] shadow-sm relative overflow-hidden">
+          <div className="bg-white p-5 rounded-2xl border border-[#eaeaec] shadow-xs relative overflow-hidden">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#94969f] uppercase tracking-wider">Top 3 Friction Share</span>
-              <div className="w-8 h-8 rounded-lg bg-[#fff7f0] flex items-center justify-center">
-                <Flame className="w-4 h-4 text-[#ff9f43]" />
+              <div className="w-8 h-8 rounded-lg bg-[#fff0f3] flex items-center justify-center">
+                <Flame className="w-4 h-4 text-[#ff3f6c]" />
               </div>
             </div>
             <div className="text-3xl font-black text-[#282c3f] mt-2">{top3CumulativePct}%</div>
-            <div className="text-xs text-[#ff3f6c] mt-2 font-medium truncate">
+            <div className="text-xs text-[#ff3f6c] mt-2 font-bold truncate">
               {top3Themes.map(t => `${t.theme_label.split(' ')[0]} (${t.pct_of_total}%)`).join(' + ')}
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-[#eaeaec] shadow-sm relative overflow-hidden">
+          <div className="bg-white p-5 rounded-2xl border border-[#eaeaec] shadow-xs relative overflow-hidden">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#94969f] uppercase tracking-wider">Strategic Constraint</span>
-              <div className="w-8 h-8 rounded-lg bg-[#f1f2fe] flex items-center justify-center">
-                <AlertCircle className="w-4 h-4 text-[#5352ed]" />
+              <div className="w-8 h-8 rounded-lg bg-[#f4f6f8] flex items-center justify-center">
+                <AlertCircle className="w-4 h-4 text-[#282c3f]" />
               </div>
             </div>
-            <div className="text-xl font-extrabold text-[#282c3f] mt-2">Zero Monetary Levers</div>
+            <div className="text-xl font-black text-[#282c3f] mt-2">Zero Monetary Levers</div>
             <div className="text-xs text-[#535766] mt-2 font-medium">
               Pure discovery & tactile certainty
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-[#eaeaec] shadow-sm relative overflow-hidden">
+          <div className="bg-white p-5 rounded-2xl border border-[#eaeaec] shadow-xs relative overflow-hidden">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#94969f] uppercase tracking-wider">4 Data Channels</span>
-              <div className="w-8 h-8 rounded-lg bg-[#f0faf4] flex items-center justify-center">
-                <Layers className="w-4 h-4 text-[#20bf6b]" />
+              <div className="w-8 h-8 rounded-lg bg-[#fff0f3] flex items-center justify-center">
+                <Layers className="w-4 h-4 text-[#ff3f6c]" />
               </div>
             </div>
             <div className="text-sm font-bold text-[#282c3f] mt-2 flex flex-wrap gap-1.5">
-              <span className="px-2 py-0.5 bg-[#f4f6f8] text-[#535766] border border-[#eaeaec] rounded-md text-xs font-medium">Play Store</span>
-              <span className="px-2 py-0.5 bg-[#f4f6f8] text-[#535766] border border-[#eaeaec] rounded-md text-xs font-medium">App Store</span>
-              <span className="px-2 py-0.5 bg-[#f4f6f8] text-[#535766] border border-[#eaeaec] rounded-md text-xs font-medium">Reddit</span>
-              <span className="px-2 py-0.5 bg-[#f4f6f8] text-[#535766] border border-[#eaeaec] rounded-md text-xs font-medium">YouTube</span>
+              <span className="px-2 py-0.5 bg-[#f4f6f8] text-[#282c3f] border border-[#eaeaec] rounded-md text-xs font-semibold">Play Store</span>
+              <span className="px-2 py-0.5 bg-[#f4f6f8] text-[#282c3f] border border-[#eaeaec] rounded-md text-xs font-semibold">App Store</span>
+              <span className="px-2 py-0.5 bg-[#f4f6f8] text-[#282c3f] border border-[#eaeaec] rounded-md text-xs font-semibold">Reddit</span>
+              <span className="px-2 py-0.5 bg-[#f4f6f8] text-[#282c3f] border border-[#eaeaec] rounded-md text-xs font-semibold">YouTube</span>
             </div>
             <div className="text-xs text-[#535766] mt-2">
               Multi-source cross-validated
@@ -275,8 +249,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* FASHION CATEGORY DISTRIBUTION GRAPH */}
-        <section className="bg-white p-6 rounded-2xl border border-[#eaeaec] shadow-sm space-y-6">
+        {/* FASHION CATEGORY DISTRIBUTION GRAPH (Clean Myntra Styling) */}
+        <section className="bg-white p-6 rounded-2xl border border-[#eaeaec] shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-[#eaeaec] gap-2">
             <div>
               <h2 className="text-xl font-black text-[#282c3f] flex items-center gap-2">
@@ -293,15 +267,14 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Category Bars */}
+            {/* Left: Clean Pink & Gray Category Bars */}
             <div className="lg:col-span-7 space-y-4">
               <h3 className="text-xs font-bold text-[#94969f] uppercase tracking-wider">
                 Category Friction Distribution
               </h3>
               
               <div className="space-y-3 pt-1">
-                {categoryChartData.map((cat) => {
-                  const theme = getCategoryTheme(cat.category);
+                {categoryChartData.map((cat, idx) => {
                   const isSelected = selectedCategory === cat.category;
                   const barWidthPct = Math.max((cat.count / maxCategoryCount) * 100, 8);
 
@@ -311,18 +284,18 @@ export default function Dashboard() {
                       onClick={() => setSelectedCategory(isSelected ? null : cat.category)}
                       className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                         isSelected 
-                          ? 'bg-[#fff0f3] border-[#ff3f6c] shadow-sm' 
+                          ? 'bg-[#fff0f3] border-[#ff3f6c] shadow-2xs' 
                           : 'bg-[#fafbfc] border-[#eaeaec] hover:border-[#d4d5d9] hover:bg-white'
                       }`}
                     >
                       <div className="flex items-center justify-between text-sm mb-2">
                         <div className="flex items-center gap-2">
-                          <span className={`w-3 h-3 rounded-full ${theme.bar}`}></span>
+                          <span className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-[#ff3f6c]' : (idx === 0 ? 'bg-[#ff3f6c]' : 'bg-[#282c3f]')}`}></span>
                           <span className="font-bold text-[#282c3f]">{cat.category}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-mono font-medium text-[#535766]">{cat.count} verbatims</span>
-                          <span className="text-xs font-extrabold text-[#282c3f] px-2 py-0.5 bg-white border border-[#eaeaec] rounded-md shadow-2xs">
+                          <span className="text-xs font-black text-[#282c3f] px-2 py-0.5 bg-white border border-[#eaeaec] rounded-md">
                             {cat.pct}%
                           </span>
                         </div>
@@ -331,7 +304,11 @@ export default function Dashboard() {
                       {/* Bar */}
                       <div className="w-full h-3 bg-[#eaeaec] rounded-full overflow-hidden">
                         <div 
-                          className={`h-full rounded-full ${theme.bar} transition-all duration-700`}
+                          className={`h-full rounded-full transition-all duration-700 ${
+                            isSelected || idx === 0 
+                              ? 'bg-gradient-to-r from-[#ff3f6c] to-[#ff527b]' 
+                              : 'bg-gradient-to-r from-[#282c3f] to-[#535766]'
+                          }`}
                           style={{ width: `${barWidthPct}%` }}
                         />
                       </div>
@@ -361,17 +338,16 @@ export default function Dashboard() {
                     ? categoryChartData.filter(c => c.category === selectedCategory)
                     : categoryChartData.slice(0, 3)
                   ).map((cat) => {
-                    const theme = getCategoryTheme(cat.category);
                     return (
-                      <div key={cat.category} className={`p-3.5 rounded-xl border text-xs bg-white ${theme.border} shadow-xs`}>
+                      <div key={cat.category} className="p-3.5 rounded-xl border border-[#eaeaec] text-xs bg-white shadow-2xs">
                         <div className="flex items-center justify-between font-bold text-[#282c3f] mb-1">
-                          <span>{cat.category}</span>
-                          <span className={theme.text}>{cat.count} Mentions ({cat.pct}%)</span>
+                          <span className="font-extrabold">{cat.category}</span>
+                          <span className="text-[#ff3f6c] font-black">{cat.count} Mentions ({cat.pct}%)</span>
                         </div>
                         <div className="text-[11px] text-[#535766]">
                           <strong className="text-[#282c3f]">Primary Friction:</strong> {cat.topTheme}
                         </div>
-                        <div className="text-[11px] text-[#94969f] italic mt-1 bg-[#f8f9fb] p-2 rounded-lg border border-[#eaeaec]">
+                        <div className="text-[11px] text-[#535766] italic mt-1.5 bg-[#f8f9fb] p-2.5 rounded-lg border border-[#eaeaec]">
                           "{cat.primaryQuote}"
                         </div>
                       </div>
@@ -391,7 +367,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column: Quantified Thematic Explorer */}
           <section className="lg:col-span-7 space-y-4">
-            <div className="bg-white p-6 rounded-2xl border border-[#eaeaec] shadow-sm">
+            <div className="bg-white p-6 rounded-2xl border border-[#eaeaec] shadow-xs">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-lg font-black text-[#282c3f] flex items-center gap-2">
@@ -401,7 +377,7 @@ export default function Dashboard() {
                     Click any theme below to view details and authentic verbatim evidence.
                   </p>
                 </div>
-                <span className="text-xs font-semibold text-[#94969f]">7 Active Themes</span>
+                <span className="text-xs font-bold text-[#94969f]">7 Active Themes</span>
               </div>
 
               {/* Theme Progress List */}
@@ -414,29 +390,35 @@ export default function Dashboard() {
                       onClick={() => setSelectedTheme(item)}
                       className={`p-3.5 rounded-xl cursor-pointer transition-all border ${
                         isSelected 
-                          ? 'bg-[#fff0f3] border-[#ff3f6c] shadow-sm' 
+                          ? 'bg-[#fff0f3] border-[#ff3f6c] shadow-2xs' 
                           : 'bg-[#fafbfc] border-[#eaeaec] hover:border-[#d4d5d9] hover:bg-white'
                       }`}
                     >
                       <div className="flex items-center justify-between text-sm mb-2">
                         <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-[#f4f6f8] text-[#535766] text-xs flex items-center justify-center font-bold border border-[#eaeaec]">
+                          <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold border ${
+                            isSelected ? 'bg-[#ff3f6c] text-white border-[#ff3f6c]' : 'bg-[#f4f6f8] text-[#535766] border-[#eaeaec]'
+                          }`}>
                             {idx + 1}
                           </span>
                           <span className="font-bold text-[#282c3f]">{item.theme_label}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-mono text-[#535766]">{item.mention_count} mentions</span>
-                          <span className="text-xs font-extrabold text-[#282c3f] px-2 py-0.5 bg-white border border-[#eaeaec] rounded shadow-2xs">
+                          <span className="text-xs font-black text-[#282c3f] px-2 py-0.5 bg-white border border-[#eaeaec] rounded">
                             {item.pct_of_total}%
                           </span>
                         </div>
                       </div>
 
-                      {/* Progress Bar */}
+                      {/* Progress Bar (Myntra Pink Gradients) */}
                       <div className="w-full h-2.5 bg-[#eaeaec] rounded-full overflow-hidden">
                         <div 
-                          className={`h-full rounded-full ${getThemeGradient(idx)} transition-all duration-500`}
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            idx === 0 
+                              ? 'bg-[#ff3f6c]' 
+                              : (idx === 1 ? 'bg-[#ff527b]' : (idx === 2 ? 'bg-[#ff7597]' : 'bg-[#535766]'))
+                          }`}
                           style={{ width: `${item.pct_of_total}%` }}
                         />
                       </div>
@@ -448,7 +430,7 @@ export default function Dashboard() {
 
             {/* Selected Theme Details & Verbatim Quotes */}
             {selectedTheme && (
-              <div className="bg-white p-6 rounded-2xl border border-[#eaeaec] shadow-sm space-y-4">
+              <div className="bg-white p-6 rounded-2xl border border-[#eaeaec] shadow-xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-[#eaeaec]">
                   <div>
                     <span className="text-xs font-bold text-[#ff3f6c] uppercase tracking-wider">Inspected Problem Space</span>
@@ -467,7 +449,7 @@ export default function Dashboard() {
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(selectedTheme.segment_breakdown).map(([cat, count]) => (
                         count > 0 && (
-                          <span key={cat} className="px-2.5 py-1 bg-[#f4f6f8] text-[#282c3f] border border-[#eaeaec] rounded-lg text-xs font-semibold flex items-center gap-1.5">
+                          <span key={cat} className="px-2.5 py-1 bg-[#f4f6f8] text-[#282c3f] border border-[#eaeaec] rounded-lg text-xs font-bold flex items-center gap-1.5">
                             <Tag className="w-3 h-3 text-[#ff3f6c]" />
                             {cat}: <strong className="text-[#ff3f6c]">{count}</strong>
                           </span>
@@ -496,10 +478,10 @@ export default function Dashboard() {
 
           {/* Right Column: AI PM Discovery Copilot Chat */}
           <section className="lg:col-span-5 flex flex-col h-full">
-            <div className="bg-white p-6 rounded-2xl border border-[#eaeaec] shadow-sm flex flex-col h-[700px]">
+            <div className="bg-white p-6 rounded-2xl border border-[#eaeaec] shadow-xs flex flex-col h-[700px]">
               <div className="flex items-center justify-between pb-4 border-b border-[#eaeaec]">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-[#fff0f3] border border-[#ff3f6c]/20 flex items-center justify-center text-[#ff3f6c] shadow-2xs">
+                  <div className="w-9 h-9 rounded-xl bg-[#fff0f3] border border-[#ff3f6c]/20 flex items-center justify-center text-[#ff3f6c]">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
@@ -519,8 +501,8 @@ export default function Dashboard() {
                     <div 
                       className={`max-w-[88%] p-3.5 rounded-2xl text-xs leading-relaxed ${
                         m.role === 'user' 
-                          ? 'bg-[#ff3f6c] text-white rounded-br-none shadow-sm' 
-                          : 'bg-[#fafbfc] text-[#282c3f] border border-[#eaeaec] rounded-bl-none shadow-2xs'
+                          ? 'bg-[#ff3f6c] text-white rounded-br-none shadow-xs font-medium' 
+                          : 'bg-[#f8f9fb] text-[#282c3f] border border-[#eaeaec] rounded-bl-none shadow-2xs'
                       }`}
                     >
                       <div className="whitespace-pre-wrap">{m.content}</div>
@@ -529,7 +511,7 @@ export default function Dashboard() {
                 ))}
                 {isGenerating && (
                   <div className="flex justify-start">
-                    <div className="p-3 bg-[#fafbfc] border border-[#eaeaec] rounded-2xl text-xs text-[#535766] flex items-center gap-2">
+                    <div className="p-3 bg-[#f8f9fb] border border-[#eaeaec] rounded-2xl text-xs text-[#535766] flex items-center gap-2">
                       <Sparkles className="w-3.5 h-3.5 text-[#ff3f6c] animate-spin" />
                       Analyzing VoC intelligence across 4 channels...
                     </div>
@@ -572,12 +554,12 @@ export default function Dashboard() {
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   placeholder="Ask a question about customer drop-offs..."
-                  className="flex-1 bg-[#f4f6f8] border border-[#eaeaec] focus:border-[#ff3f6c] focus:bg-white focus:outline-none rounded-xl px-3.5 py-2.5 text-xs text-[#282c3f] placeholder-[#94969f] transition-all"
+                  className="flex-1 bg-[#f4f6f8] border border-[#eaeaec] focus:border-[#ff3f6c] focus:bg-white focus:outline-none rounded-xl px-3.5 py-2.5 text-xs text-[#282c3f] placeholder-[#94969f] transition-all font-medium"
                 />
                 <button
                   type="submit"
                   disabled={!inputMessage.trim() || isGenerating}
-                  className="p-2.5 bg-[#ff3f6c] hover:bg-[#e0345d] disabled:opacity-50 text-white rounded-xl transition-all shadow-sm"
+                  className="p-2.5 bg-[#ff3f6c] hover:bg-[#e0345d] disabled:opacity-50 text-white rounded-xl transition-all shadow-xs"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -591,14 +573,14 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <h2 className="text-xl font-black text-[#282c3f] flex items-center gap-2">
-                <Award className="w-6 h-6 text-[#ff9f43]" />
+                <Award className="w-6 h-6 text-[#ff3f6c]" />
                 Top 3 Critical Drop-Off Drivers ({top3CumulativePct}% Cumulative Impact)
               </h2>
               <p className="text-xs text-[#535766] mt-1 font-normal">
                 Real-time dynamic ranking of the top 3 highest-weight friction themes causing users to save items without purchasing.
               </p>
             </div>
-            <span className="px-3 py-1 bg-[#fff7f0] text-[#ff9f43] border border-[#ff9f43]/20 rounded-full text-xs font-bold">
+            <span className="px-3 py-1 bg-[#fff0f3] text-[#ff3f6c] border border-[#ff3f6c]/20 rounded-full text-xs font-bold">
               Highest Strategic Priority
             </span>
           </div>
@@ -611,21 +593,25 @@ export default function Dashboard() {
               return (
                 <div 
                   key={item.theme}
-                  className="bg-white p-5 rounded-2xl border border-[#eaeaec] hover:border-[#ff3f6c]/50 transition-all flex flex-col justify-between space-y-4 shadow-sm"
+                  className="bg-white p-5 rounded-2xl border border-[#eaeaec] hover:border-[#ff3f6c]/60 transition-all flex flex-col justify-between space-y-4 shadow-xs"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#ff9f43] bg-[#fff7f0] px-2.5 py-1 rounded-md border border-[#ff9f43]/20">
+                      <span className={`text-xs font-black px-2.5 py-1 rounded-md border ${
+                        idx === 0 
+                          ? 'bg-[#fff0f3] text-[#ff3f6c] border-[#ff3f6c]/20' 
+                          : 'bg-[#f4f6f8] text-[#282c3f] border-[#eaeaec]'
+                      }`}>
                         {rankLabels[idx]}
                       </span>
-                      <span className="text-xs font-bold text-[#282c3f] px-2.5 py-1 bg-[#f4f6f8] border border-[#eaeaec] rounded-md">
+                      <span className="text-xs font-black text-[#282c3f] px-2.5 py-1 bg-[#f4f6f8] border border-[#eaeaec] rounded-md">
                         {item.pct_of_total}% Weight
                       </span>
                     </div>
 
                     <div>
                       <h3 className="text-base font-black text-[#282c3f] leading-snug">{item.theme_label}</h3>
-                      <p className="text-xs text-[#535766] mt-1 font-mono">{item.mention_count} Customer Mentions</p>
+                      <p className="text-xs text-[#535766] mt-1 font-mono font-medium">{item.mention_count} Customer Mentions</p>
                     </div>
 
                     {/* Impacted Segments */}
@@ -637,7 +623,7 @@ export default function Dashboard() {
                             .filter(([_, count]) => count > 0)
                             .slice(0, 3)
                             .map(([cat, count]) => (
-                              <span key={cat} className="px-2 py-0.5 bg-[#f4f6f8] text-[#282c3f] border border-[#eaeaec] rounded text-[11px] font-medium">
+                              <span key={cat} className="px-2 py-0.5 bg-[#f4f6f8] text-[#282c3f] border border-[#eaeaec] rounded text-[11px] font-bold">
                                 {cat}: <strong className="text-[#ff3f6c]">{count}</strong>
                               </span>
                             ))}
@@ -661,9 +647,9 @@ export default function Dashboard() {
                     <div className="flex items-center gap-1.5 text-xs font-bold text-[#ff3f6c] mb-1">
                       <Lightbulb className="w-3.5 h-3.5" /> Non-Monetary Product Solution:
                     </div>
-                    <div className={`p-3 rounded-xl border text-xs ${leverInfo.badgeColor}`}>
-                      <div className="font-bold text-[#282c3f] mb-0.5">{leverInfo.lever}</div>
-                      <div className="text-[11px] text-[#535766]">{leverInfo.desc}</div>
+                    <div className="p-3 rounded-xl border border-[#ff3f6c]/20 bg-[#fff0f3] text-xs">
+                      <div className="font-extrabold text-[#282c3f] mb-0.5">{leverInfo.lever}</div>
+                      <div className="text-[11px] text-[#535766] font-medium leading-relaxed">{leverInfo.desc}</div>
                     </div>
                   </div>
                 </div>
