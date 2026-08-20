@@ -37,23 +37,25 @@ export default function Dashboard() {
   const [inputMessage, setInputMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Fetch live insights from internal API route
+  // Fetch live insights from internal API route with cache-busting
   const fetchInsights = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/insights');
+      const res = await fetch(`/api/insights?t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
 
       if (data && data.insights && data.insights.length > 0) {
         setInsights(data.insights);
         setSelectedTheme(data.insights[0]);
         setTotalAnalyzed(data.total_raw_analyzed || 1486);
-        setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        setJustRefreshed(true);
+        setTimeout(() => setJustRefreshed(false), 2500);
       }
     } catch (err) {
       console.error('Error fetching insights:', err);
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 300);
     }
   };
 
@@ -177,13 +179,22 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-[#535766] font-medium hidden sm:inline">
+              {justRefreshed ? (
+                <span className="text-[#ff3f6c] font-bold">✓ Synced just now</span>
+              ) : (
+                `Last updated: ${lastUpdated}`
+              )}
+            </span>
+          )}
           <button 
             onClick={fetchInsights} 
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-[#fff0f3] border border-[#d4d5d9] hover:border-[#ff3f6c] text-sm font-bold rounded-xl transition-all text-[#282c3f] hover:text-[#ff3f6c] shadow-2xs"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-[#fff0f3] border border-[#d4d5d9] hover:border-[#ff3f6c] text-sm font-bold rounded-xl transition-all text-[#282c3f] hover:text-[#ff3f6c] shadow-2xs active:scale-95 cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 text-[#ff3f6c] ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Syncing...' : 'Refresh Insights'}
+            {loading ? 'Refreshing...' : (justRefreshed ? 'Updated!' : 'Refresh Insights')}
           </button>
         </div>
       </header>
@@ -251,19 +262,14 @@ export default function Dashboard() {
 
         {/* FASHION CATEGORY DISTRIBUTION GRAPH (Clean Myntra Styling) */}
         <section className="bg-white p-6 rounded-2xl border border-[#eaeaec] shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-[#eaeaec] gap-2">
-            <div>
-              <h2 className="text-xl font-black text-[#282c3f] flex items-center gap-2">
-                <Shirt className="w-5 h-5 text-[#ff3f6c]" />
-                Fashion Category Distribution & Drop-Off Volume
-              </h2>
-              <p className="text-xs text-[#535766] mt-1">
-                Visual breakdown of 1,486 customer friction verbatims across Myntra product departments.
-              </p>
-            </div>
-            <span className="px-3 py-1 bg-[#fff0f3] text-[#ff3f6c] border border-[#ff3f6c]/20 rounded-full text-xs font-bold">
-              Category Matrix
-            </span>
+          <div className="pb-4 border-b border-[#eaeaec]">
+            <h2 className="text-xl font-black text-[#282c3f] flex items-center gap-2">
+              <Shirt className="w-5 h-5 text-[#ff3f6c]" />
+              Fashion Category Distribution & Drop-Off Volume
+            </h2>
+            <p className="text-xs text-[#535766] mt-1">
+              Visual breakdown of 1,486 customer friction verbatims across Myntra product departments.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
