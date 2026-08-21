@@ -118,7 +118,7 @@ export default function Dashboard() {
     }
   };
 
-  const top3Themes = insights.slice(0, 3);
+  const top3Themes = insights.filter(t => t.theme !== 'unrelated_other').slice(0, 3);
   const top3CumulativePct = top3Themes.reduce((acc, t) => acc + (parseFloat(t.pct_of_total) || 0), 0).toFixed(1);
 
   // Dynamic Category Aggregation
