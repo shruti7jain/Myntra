@@ -1,0 +1,19 @@
+{
+  "sample_size": 5,
+  "agreed_count": 4,
+  "disagreed_count": 1,
+  "agreement_pct": 80.0,
+  "timestamp": "2026-08-21T09:17:20.530449",
+  "disagreements": [
+    {
+      "id": 1281,
+      "platform": "playstore",
+      "text": "Best Shopping App Ever! Absolutely love Myntra! The user interface is incredibly smooth, and the collection is always up-to-date with the latest trends. Delivery is fast, and returns/exchanges are completely hassle-free. Keep up the amazing work, team Myntra!",
+      "ai_theme": "occasion_timing_delay",
+      "ai_theme_label": "Occasion Timing & Postponement",
+      "user_theme": "fabric_quality_ambiguity",
+      "user_theme_label": "Fabric Quality & Tactile Ambiguity",
+      "classification_method": "heuristic_fallback"
+    }
+  ]
+}
