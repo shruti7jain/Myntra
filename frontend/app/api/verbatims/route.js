@@ -16,6 +16,7 @@ export async function GET(request) {
       .eq('is_processed', true)
       .neq('theme', 'unrelated_other')
       .not('theme', 'is', null)
+      .or('rating.lte.3,rating.is.null')
       .range(offset, offset + limit - 1);
 
     if (error) {
