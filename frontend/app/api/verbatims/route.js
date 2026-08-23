@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const limit = parseInt(searchParams.get('limit') || '1500', 10);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const offset = (page - 1) * limit;
 
@@ -14,9 +14,6 @@ export async function GET(request) {
       .from('raw_feedback')
       .select('text, platform, theme')
       .eq('is_processed', true)
-      .neq('theme', 'unrelated_other')
-      .not('theme', 'is', null)
-      .or('rating.lte.3,rating.is.null')
       .range(offset, offset + limit - 1);
 
     if (error) {

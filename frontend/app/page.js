@@ -127,7 +127,7 @@ export default function MyntraDiscoveryEngine() {
   const fetchQuotes = async () => {
     setLoadingQuotes(true);
     try {
-      const r = await fetch(`/api/verbatims?limit=150`);
+      const r = await fetch(`/api/verbatims?limit=1500`);
       const d = await r.json();
       if (d.verbatims) setQuotes(d.verbatims);
     } catch {}
