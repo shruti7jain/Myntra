@@ -276,7 +276,7 @@ export default function MyntraDiscoveryEngine() {
               <div className="grid grid-cols-3 gap-4">
                 {[
                   { label: 'User conversations analysed',  val: totalAnalyzed.toLocaleString(), sub: 'From 4 platforms, scraped daily via GitHub Actions', icon: FileText },
-                  { label: 'Friction signals identified',  val: '{totalFrictionCount.toLocaleString()}',                        sub: 'Genuine purchase blockers — tagged by Groq Llama 3.3', icon: AlertTriangle },
+                  { label: 'Friction signals identified',  val: totalFrictionCount.toLocaleString(),                        sub: 'Genuine purchase blockers — tagged by Groq Llama 3.3', icon: AlertTriangle },
                   { label: 'Noise filtered out',           val: noiseCount.toLocaleString(),     sub: 'Off-topic reviews, delivery issues, unrelated positives', icon: CheckCircle2 },
                 ].map((k, i) => (
                   <div key={i} className="bg-white rounded-xl border border-[#e9e9eb] p-4">
