@@ -354,19 +354,26 @@ export default function MyntraDiscoveryEngine() {
                   <div className="flex-1 bg-[#fff8f9] border border-[#ffcdd7] rounded-xl p-4">
                     <p className="text-[11px] font-black text-[#94969f] uppercase tracking-wider mb-3">What we discovered (Top 3 Reasons)</p>
                     <div className="space-y-4">
-                      {[
-                        { n: '1', title: 'Fit & Sizing Inconsistency (33%)', body: 'Users love the item but won\'t risk ordering the wrong size. Inconsistent brand charts push them off-platform to Reddit before they can commit.' },
-                        { n: '2', title: 'Fabric Quality Ambiguity (25%)', body: 'Studio photography hides sheerness and material thinness. Users seek YouTube unboxings to see fabric in real, unedited light before ordering.' },
-                        { n: '3', title: 'Styling & Outfit Pairing Doubt (18%)', body: 'Users wishlist items they like visually but cannot picture wearing with their existing wardrobe. Without a clear outfit plan, items stay saved indefinitely.' },
-                      ].map(f => (
-                        <div key={f.n} className="flex gap-2.5">
-                          <div className="w-4 h-4 rounded-full bg-[#ff3f6c] text-white flex-shrink-0 flex items-center justify-center text-[9px] font-black mt-0.5">{f.n}</div>
-                          <div>
-                            <p className="text-[11px] font-bold text-[#282C3F]">{f.title}</p>
-                            <p className="text-[10px] text-[#535766] leading-relaxed mt-0.5">{f.body}</p>
+                      {themes.slice(0, 3).map((t, i) => {
+                        const descriptions = {
+                          fit_sizing_anxiety: 'Users love the item but won\'t risk ordering the wrong size. Inconsistent brand charts push them off-platform to Reddit before they can commit.',
+                          fabric_quality_ambiguity: 'Studio photography hides sheerness and material thinness. Users seek YouTube unboxings to see fabric in real, unedited light before ordering.',
+                          styling_pairing_doubt: 'Users wishlist items they like visually but cannot picture wearing with their existing wardrobe. Without a clear outfit plan, items stay saved indefinitely.',
+                          visual_reality_discrepancy: 'The item looks perfect in studio lighting but users fear it will look different in reality. They seek out real customer photos to verify.',
+                          occasion_timing_delay: 'Users save the item for a future event or occasion, but delay the purchase until the date is closer, risking out-of-stock.',
+                          choice_paralysis_shortlist: 'Users accumulate dozens of similar items and cannot decide which one is best, leading to complete cart abandonment.',
+                          social_validation_delay: 'Users wait for friends or family to approve the item before checking out, often losing purchase momentum.'
+                        };
+                        return (
+                          <div key={i} className="flex gap-2.5">
+                            <div className="w-4 h-4 rounded-full bg-[#ff3f6c] text-white flex-shrink-0 flex items-center justify-center text-[9px] font-black mt-0.5">{i + 1}</div>
+                            <div>
+                              <p className="text-[11px] font-bold text-[#282C3F]">{t.theme_label} ({t.pct}%)</p>
+                              <p className="text-[10px] text-[#535766] leading-relaxed mt-0.5">{descriptions[t.theme] || 'Users abandon their cart due to this specific friction point.'}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 

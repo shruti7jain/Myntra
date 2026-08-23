@@ -53,7 +53,8 @@ export async function GET() {
       theme: themeId,
       theme_label: CANONICAL_LABELS[themeId] || themeId,
       mention_count: count,
-      pct_of_total: total_friction_count > 0 ? (count / total_friction_count) * 100 : 0
+      count: count, // add count alias for ui mapping
+      pct: total_friction_count > 0 ? Math.round((count / total_friction_count) * 100) : 0
     })).sort((a, b) => b.mention_count - a.mention_count);
 
     return NextResponse.json({
