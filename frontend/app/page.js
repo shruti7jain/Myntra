@@ -436,6 +436,46 @@ export default function MyntraDiscoveryEngine() {
                 </div>
               </div>
 
+              {/* ── OPPORTUNITIES ── */}
+              <div className="bg-white border border-[#e9e9eb] rounded-xl overflow-hidden mt-5">
+                <div className="px-5 py-4 border-b border-[#e9e9eb]">
+                  <p className="text-[13px] font-bold text-[#282C3F]">Actionable Product Opportunities</p>
+                  <p className="text-[10px] text-[#94969f] mt-0.5">Top 5 data-backed interventions to reduce wishlist abandonment</p>
+                </div>
+                <div className="divide-y divide-[#e9e9eb]">
+                  {OPPORTUNITIES.map((opp, i) => {
+                    const themeData = themes.find(t => t.id === opp.id) || { pct: 0 };
+                    return (
+                    <div key={opp.id} className="p-5 hover:bg-[#fafafa] transition-colors flex gap-5">
+                      <div className="w-8 h-8 rounded-full bg-[#282C3F] text-white flex-shrink-0 flex items-center justify-center font-black text-[12px]">
+                        {i + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-[12px] font-bold text-[#282C3F]">{opp.label}</h3>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#fff0f3] text-[#ff3f6c]">
+                            {opp.tag} ({themeData.pct}% of friction)
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#f5f5f6] text-[#535766]">
+                            Impact: {opp.impact}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-wider text-[#94969f] mb-1">What & How</p>
+                            <p className="text-[10px] text-[#535766] leading-relaxed">{opp.what}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-wider text-[#94969f] mb-1">Why it matters</p>
+                            <p className="text-[10px] text-[#535766] leading-relaxed">{opp.why}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )})}
+                </div>
+              </div>
+
             </div>
           )}
 
