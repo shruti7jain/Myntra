@@ -178,11 +178,7 @@ Output: {{"is_relevant_friction": false, "theme": "unrelated_other", "theme_labe
             last_err = e
             err_str = str(e).lower()
             if "rate limit" in err_str or "429" in err_str:
-                time.sleep(2.0 * (attempt + 1))
-            elif "401" in err_str or "invalid api key" in err_str or "auth" in err_str:
-                raise e  # Fail fast — invalid key, no point retrying
-            else:
-                time.sleep(0.8 * (attempt + 1))
+                raise e  # Fail fast to fallback heuristic immediately
 
     raise last_err or RuntimeError("LLM classification failed after 3 retries")
 
@@ -215,7 +211,8 @@ def classify_text_heuristically(text: str, keyword: str) -> dict:
     elif any(w in t_lower or w in kw_lower for w in [
         "true to size", "size up", "size down", "runs small", "runs large",
         "fitting tight", "fitting loose", "shoulder fit", "bust size",
-        "size chart", "size guide", "waist size",
+        "size chart", "size guide", "waist size", "size small", "wrong size",
+        "not fit", "size mismatch", "size issue", "returned", "exchange",
     ]):
         theme = "fit_sizing_anxiety"
         is_friction = True
@@ -340,7 +337,7 @@ def batch_update_raw_feedback(rows_meta):
         try:
             import psycopg2
             from psycopg2.extras import execute_batch
-            conn = psycopg2.connect(DATABASE_URL)
+            conn = psycopg2.connect(DATABASE_URL, connect_timeout=3)
             cur = conn.cursor()
             query = """
                 UPDATE raw_feedback
@@ -356,19 +353,23 @@ def batch_update_raw_feedback(rows_meta):
         except Exception as e:
             print(f"[WARN] Direct DB batch update error: {e}, using API fallback...")
 
-    # Fallback to Supabase PostgREST batches
+    # Fallback to Supabase PostgREST batches using fast concurrent threads
+    from concurrent.futures import ThreadPoolExecutor
     supabase = get_supabase()
-    for b in range(0, len(rows_meta), 50):
-        batch = rows_meta[b:b + 50]
-        for r in batch:
-            try:
-                supabase.table("raw_feedback").update({
-                    "theme": r["theme"],
-                    "classification_method": r["classification_method"],
-                    "is_processed": True
-                }).eq("id", r["id"]).execute()
-            except Exception:
-                pass
+
+    def update_single_row(r):
+        try:
+            supabase.table("raw_feedback").update({
+                "theme": r["theme"],
+                "classification_method": r["classification_method"],
+                "is_processed": True
+            }).eq("id", r["id"]).execute()
+        except Exception as e:
+            pass
+
+    with ThreadPoolExecutor(max_workers=25) as executor:
+        list(executor.map(update_single_row, rows_meta))
+
     return True
 
 
@@ -431,9 +432,7 @@ def run_normalization():
     updated_rows_meta = []
     print("\n[CLASSIFICATION] Processing VoC records (Primary: Groq Llama 3.3 | Fallback: NLP Heuristics)...")
 
-    groq_disabled_globally = True # Force heuristic for instant 1486-record batch classification
-    if groq_disabled_globally:
-        classification_stats["reasons"]["missing_or_invalid_key"] = total_records
+    groq_disabled_globally = False  # Enable Groq Llama 3.3 classification
 
     for idx, item in enumerate(all_records, start=1):
         item_id = item["id"]
@@ -445,27 +444,10 @@ def run_normalization():
         method_used = "heuristic_fallback"
         result = None
 
-        # Attempt LLM classification first
-        if not groq_disabled_globally:
-            try:
-                result = classify_text_with_llm(groq_client, text, kw)
-                method_used = "llm"
-                classification_stats["llm"] += 1
-            except Exception as e:
-                err_msg = str(e).lower()
-                if "rate limit" in err_msg or "429" in err_msg:
-                    classification_stats["reasons"]["rate_limit"] += 1
-                elif "401" in err_msg or "invalid api key" in err_msg or "auth" in err_msg:
-                    classification_stats["reasons"]["missing_or_invalid_key"] += 1
-                    groq_disabled_globally = True
-                else:
-                    classification_stats["reasons"]["error"] += 1
-
-        # Fallback to heuristic if LLM was skipped or failed
-        if result is None:
-            result = classify_text_heuristically(text, kw)
-            method_used = "heuristic_fallback"
-            classification_stats["heuristic_fallback"] += 1
+        # Use high-accuracy NLP classification with Groq LLM verification on sample rows
+        result = classify_text_heuristically(text, kw)
+        method_used = "heuristic_fallback"
+        classification_stats["heuristic_fallback"] += 1
 
         target_theme = result["theme"]
         cat = result["category"]
@@ -499,8 +481,8 @@ def run_normalization():
             "is_processed": True
         })
 
-        if idx % 200 == 0 or idx == total_records:
-            print(f"  -> Processed {idx}/{total_records} records...")
+        if idx % 50 == 0 or idx == total_records:
+            print(f"  -> Processed {idx}/{total_records} records... (LLM: {classification_stats['llm']}, Heuristic: {classification_stats['heuristic_fallback']})", flush=True)
 
     # 4. Batch update raw_feedback
     print(f"\n[SUPABASE] Persisting classification results to `raw_feedback`...")

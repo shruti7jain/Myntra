@@ -40,6 +40,10 @@ WISHLIST_KEYWORD_PAIRS = [
     ("bust size", None),
     ("waist size", None),
     ("size guide", None),
+    ("size small", None),
+    ("wrong size", None),
+    ("not fit", None),
+    ("size issue", None),
 
     # Return/Exchange (require friction context — not "hassle free returns")
     ("had to return", None),
