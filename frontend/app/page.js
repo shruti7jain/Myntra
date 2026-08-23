@@ -17,24 +17,6 @@ import {
 
 
 
-const REAL_QUOTES = [
-  { text: 'Toh last dupatta bhi see through tha — photos pe dikh hi nahi raha tha. Wishlisted for 3 weeks then gave up.', platform: 'Reddit',     theme: 'Fabric Quality' },
-  { text: 'Ordered L per size chart, shoulders were tight. Had to return. Now I just don\'t buy anything without checking Reddit first.', platform: 'Play Store', theme: 'Fit & Sizing' },
-  { text: 'I always check YouTube unboxing before ordering any kurti. Too many times the fabric was totally different from photos.', platform: 'Reddit',     theme: 'Fabric Quality' },
-  { text: 'Had 47 things saved. Opened it one day, felt overwhelmed — deleted everything. Bought nothing.', platform: 'App Store',  theme: 'Choice Paralysis' },
-  { text: 'Sent screenshot to WhatsApp group. Friends said it looks cheap, so I dropped it. It was fine to me.', platform: 'Reddit',     theme: 'Social Validation' },
-  { text: 'Same brand — M size is different for kurtas vs tops. Can\'t trust the chart without checking reviews first.', platform: 'Play Store', theme: 'Fit & Sizing' },
-  { text: 'Saved a gorgeous lehenga, but the color in the model shoot looked completely altered. No buyer photos = no buy.', platform: 'App Store', theme: 'Photo Mismatch' },
-  { text: 'Waiting for cousin\'s wedding next month to actually checkout my cart. Hoping it doesn\'t go out of stock.', platform: 'YouTube', theme: 'Occasion Timing' },
-  { text: 'Loved the top but literally have no bottoms that match it. Saved it just in case I find something later.', platform: 'Reddit', theme: 'Styling Doubt' },
-  { text: 'Size S is sometimes XS and sometimes M. I have to order 2 sizes every time just to be safe. So annoying.', platform: 'Play Store', theme: 'Fit & Sizing' },
-  { text: 'Why is there no close-up of the material? Looks like cotton but could be that cheap polyester mix.', platform: 'Reddit', theme: 'Fabric Quality' },
-  { text: 'Wishlist is basically my graveyard of "maybe one day" dresses. Too many options, can never decide.', platform: 'App Store', theme: 'Choice Paralysis' },
-  { text: 'Waiting for my sister to reply if this color suits me before I hit order. She takes forever.', platform: 'YouTube', theme: 'Social Validation' },
-  { text: 'The kurti looked neon pink in the pictures but a dull peach when it arrived. Never trusting studio lighting again.', platform: 'Reddit', theme: 'Photo Mismatch' },
-  { text: 'I want to buy this saree but I have no idea how to style the blouse. Leaving it in wishlist till I figure it out.', platform: 'Play Store', theme: 'Styling Doubt' },
-];
-
 const OPPORTUNITIES = [
   { id: 'fit_sizing_anxiety', theme: 'fit_sizing_anxiety', label: 'AI TrueFit Body Score', tag: 'Solves Fit & Sizing', impact: 'Critical', what: 'A personalised 1–100 fit confidence score based on the user\'s body measurements and their verified non-return purchase history across similar items.', why: 'Brand size charts are inconsistent across categories — an M in Western wear doesn\'t match an M in Ethnic wear. High-intent users give up rather than risk ordering the wrong size.', workaround: 'Users leave Myntra to search Reddit threads like "Does Anouk run large?" before they can commit to buying.' },
   { id: 'fabric_quality_ambiguity', theme: 'fabric_quality_ambiguity', label: 'Tactile Confidence Tags', tag: 'Solves Fabric Ambiguity', impact: 'High', what: 'A verified buyer-sourced Sheerness Scale (1–5) and GSM thickness badge shown on every fabric-heavy listing — sourced exclusively from purchase-verified reviewers.', why: 'Studio photography with professional lighting hides fabric sheerness and structural thinness. There is no way for users to assess real material quality from product images.', workaround: 'Users watch YouTube unboxing hauls under natural light before ordering — a multi-hour detour that often kills purchase momentum.' },
@@ -85,7 +67,7 @@ export default function MyntraDiscoveryEngine() {
   const [dbInsights, setDbInsights] = useState([]);
   const [totalAnalyzed, setTotalAnalyzed] = useState(1486);
   const [syncing, setSyncing] = useState(false);
-  const [showAllQuotes, setShowAllQuotes] = useState(false);
+  const [showAllQuotes, setShowAllQuotes] = useState(true);
   const [lastSynced, setLastSynced] = useState(null);
   const [themes, setThemes] = useState([]);
   const [platforms, setPlatforms] = useState([
@@ -139,6 +121,7 @@ export default function MyntraDiscoveryEngine() {
   // Initial load
   useEffect(() => {
     sync();
+    fetchQuotes();
   }, []);
 
   const fetchQuotes = async () => {
@@ -151,11 +134,7 @@ export default function MyntraDiscoveryEngine() {
     setLoadingQuotes(false);
   };
   
-  useEffect(() => {
-    if (showAllQuotes && quotes.length === 0) {
-      fetchQuotes();
-    }
-  }, [showAllQuotes]);
+
 
 
   const sendMsg = async (force) => {
@@ -410,20 +389,14 @@ export default function MyntraDiscoveryEngine() {
                 <div className="px-5 py-4 border-b border-[#e9e9eb] flex items-center justify-between">
                   <div>
                     <p className="text-[13px] font-bold text-[#282C3F]">What users actually said</p>
-                    <p className="text-[10px] text-[#94969f] mt-0.5">Real verbatims — platform-attributed, PII sanitised</p>
+                    <p className="text-[10px] text-[#94969f] mt-0.5">Live verbatims — platform-attributed, PII sanitised</p>
                   </div>
-                  <button
-                    onClick={() => setShowAllQuotes(!showAllQuotes)}
-                    className="text-[10px] font-bold text-[#ff3f6c] bg-[#fff0f3] hover:bg-[#ffe4e9] px-3 py-1.5 rounded-lg transition-colors border border-[#ffcdd7]"
-                  >
-                    {showAllQuotes ? 'Collapse view' : `View all ${totalFrictionCount.toLocaleString()} verbatims`}
-                  </button>
                 </div>
-                <div className={`p-5 transition-all duration-300 ${showAllQuotes ? 'max-h-[500px] overflow-y-auto' : ''}`}>
+                <div className="p-5 max-h-[500px] overflow-y-auto">
                   <div className="grid grid-cols-3 gap-3">
                     {loadingQuotes ? (
                       <div className="col-span-3 text-center py-10 text-[11px] text-[#94969f]">Loading live verbatims from Supabase...</div>
-                    ) : (showAllQuotes ? quotes : REAL_QUOTES.slice(0, 6)).map((q, i) => (
+                    ) : quotes.map((q, i) => (
                       <div key={i} className="rounded-xl p-3.5 border border-[#e9e9eb] bg-[#fafafa] hover:border-[#ffcdd7] transition-colors flex flex-col">
                         <p className="text-[11px] italic text-[#282C3F] leading-relaxed mb-3">"{q.text}"</p>
                         <div className="flex items-center justify-between mt-auto">

@@ -51,10 +51,24 @@ export async function GET() {
       })
     );
 
+    // Map to canonical labels
+    const CANONICAL_LABELS = {
+      "fabric_quality_ambiguity": "Fabric Quality & Tactile Ambiguity",
+      "visual_reality_discrepancy": "Product Photo vs. Reality Mismatch",
+      "fit_sizing_anxiety": "Fit & Sizing Inconsistency",
+      "occasion_timing_delay": "Occasion Timing & Postponement",
+      "styling_pairing_doubt": "Styling & Wardrobe Pairing Uncertainty",
+      "choice_paralysis_shortlist": "Choice Overload & Comparison Fatigue",
+      "social_validation_delay": "Social Validation & Peer Opinion Delay",
+    };
+
     // Compute live metrics
     let total_friction_count = 0;
     let noise_count = 0;
-    const themeCounts = {};
+    const themeCounts = Object.keys(CANONICAL_LABELS).reduce((acc, key) => {
+      acc[key] = 0;
+      return acc;
+    }, {});
     const platformCounts = {};
 
     // Use the per-platform count results
@@ -80,16 +94,7 @@ export async function GET() {
     const totalAnalyzed = rawCount || 1486;
     noise_count = totalAnalyzed - total_friction_count;
 
-    // Map to canonical labels
-    const CANONICAL_LABELS = {
-      "fabric_quality_ambiguity": "Fabric Quality & Tactile Ambiguity",
-      "visual_reality_discrepancy": "Product Photo vs. Reality Mismatch",
-      "fit_sizing_anxiety": "Fit & Sizing Inconsistency",
-      "occasion_timing_delay": "Occasion Timing & Postponement",
-      "styling_pairing_doubt": "Styling & Wardrobe Pairing Uncertainty",
-      "choice_paralysis_shortlist": "Choice Overload & Comparison Fatigue",
-      "social_validation_delay": "Social Validation & Peer Opinion Delay",
-    };
+
 
     const insights = Object.entries(themeCounts).map(([themeId, count]) => ({
       id: themeId,
