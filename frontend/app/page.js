@@ -67,7 +67,7 @@ export default function MyntraDiscoveryEngine() {
   const [dbInsights, setDbInsights] = useState([]);
   const [totalAnalyzed, setTotalAnalyzed] = useState(1486);
   const [syncing, setSyncing] = useState(false);
-  const [showAllQuotes, setShowAllQuotes] = useState(true);
+  const [showAllQuotes, setShowAllQuotes] = useState(false);
   const [lastSynced, setLastSynced] = useState(null);
   const [themes, setThemes] = useState([]);
   const [platforms, setPlatforms] = useState([
@@ -391,12 +391,18 @@ export default function MyntraDiscoveryEngine() {
                     <p className="text-[13px] font-bold text-[#282C3F]">What users actually said</p>
                     <p className="text-[10px] text-[#94969f] mt-0.5">Live verbatims — platform-attributed, PII sanitised</p>
                   </div>
+                  <button
+                    onClick={() => setShowAllQuotes(!showAllQuotes)}
+                    className="text-[10px] font-bold text-[#ff3f6c] bg-[#fff0f3] hover:bg-[#ffe4e9] px-3 py-1.5 rounded-lg transition-colors border border-[#ffcdd7]"
+                  >
+                    {showAllQuotes ? 'Collapse view' : 'Shows all Quotas'}
+                  </button>
                 </div>
-                <div className="p-5 max-h-[500px] overflow-y-auto">
+                <div className={`p-5 transition-all duration-300 ${showAllQuotes ? 'max-h-[500px] overflow-y-auto' : ''}`}>
                   <div className="grid grid-cols-3 gap-3">
                     {loadingQuotes ? (
                       <div className="col-span-3 text-center py-10 text-[11px] text-[#94969f]">Loading live verbatims from Supabase...</div>
-                    ) : quotes.map((q, i) => (
+                    ) : (showAllQuotes ? quotes : quotes.slice(0, 6)).map((q, i) => (
                       <div key={i} className="rounded-xl p-3.5 border border-[#e9e9eb] bg-[#fafafa] hover:border-[#ffcdd7] transition-colors flex flex-col">
                         <p className="text-[11px] italic text-[#282C3F] leading-relaxed mb-3">"{q.text}"</p>
                         <div className="flex items-center justify-between mt-auto">
