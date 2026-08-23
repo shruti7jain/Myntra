@@ -9,11 +9,19 @@ on:
 jobs:
   ingest-and-normalize:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Validate Required Secrets
+        run: |
+          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then echo "ERROR: SUPABASE_URL secret is missing!" && exit 1; fi
+          if [ -z "${{ secrets.SUPABASE_SERVICE_KEY }}" ]; then echo "ERROR: SUPABASE_SERVICE_KEY secret is missing!" && exit 1; fi
+          if [ -z "${{ secrets.APIFY_API_TOKEN }}" ]; then echo "ERROR: APIFY_API_TOKEN secret is missing!" && exit 1; fi
+          if [ -z "${{ secrets.GROQ_API_KEY }}" ]; then echo "ERROR: GROQ_API_KEY secret is missing!" && exit 1; fi
+          echo "All required secrets validated OK."
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -25,7 +33,8 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Run Multi-Source Ingestion Pipeline (Play Store, Reddit, App Store, YouTube)
+      - name: Run Multi-Source Ingestion Pipeline
+        timeout-minutes: 12
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -33,8 +42,13 @@ jobs:
         run: python scripts/ingestion/run_all_ingestion.py
 
       - name: Run AI Normalization & Tagging (Groq Llama 3.3)
+        # IMPORTANT: if: always() ensures normalization runs even if ingestion partially fails
+        # so that any newly ingested rows still get processed and classified.
+        if: always()
+        timeout-minutes: 10
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/normalization/process_insights.py

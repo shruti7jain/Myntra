@@ -25,9 +25,15 @@ CREATE TABLE IF NOT EXISTS raw_feedback (
     is_processed BOOLEAN DEFAULT FALSE
 );
 
--- Indexes for rapid deduplication and unprocessed batch fetching
+-- Add columns that may not exist in older deployments
+ALTER TABLE raw_feedback ADD COLUMN IF NOT EXISTS theme TEXT;
+ALTER TABLE raw_feedback ADD COLUMN IF NOT EXISTS classification_method TEXT;
+
+-- Indexes for rapid deduplication and batch fetching
 CREATE INDEX IF NOT EXISTS idx_raw_feedback_external_id ON raw_feedback(external_id);
 CREATE INDEX IF NOT EXISTS idx_raw_feedback_is_processed ON raw_feedback(is_processed);
+CREATE INDEX IF NOT EXISTS idx_raw_feedback_platform ON raw_feedback(platform);
+CREATE INDEX IF NOT EXISTS idx_raw_feedback_theme ON raw_feedback(theme);
 
 -- 2. Table for Normalized PM Discovery Insights
 CREATE TABLE IF NOT EXISTS insights (
@@ -41,6 +47,10 @@ CREATE TABLE IF NOT EXISTS insights (
     trend TEXT DEFAULT 'stable',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Add new columns for richer attribution and intent tracking
+ALTER TABLE insights ADD COLUMN IF NOT EXISTS sample_quotes_attributed JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE insights ADD COLUMN IF NOT EXISTS intent_breakdown JSONB DEFAULT '{}'::jsonb;
 
 -- 3. Enable Row Level Security (RLS) & Public Read Access
 ALTER TABLE insights ENABLE ROW LEVEL SECURITY;

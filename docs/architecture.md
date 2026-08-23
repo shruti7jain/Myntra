@@ -4,55 +4,60 @@
 
 ## 1. Architectural Vision & Scope
 
-The Discovery Engine is a backend analysis and insight-generation system designed to process unstructured Voice of Customer (VoC) data from specific public channels. Its sole purpose is to convert raw conversations into structured, evidence-backed insights regarding why users abandon their Myntra wishlists, without proposing final product solutions.
+The Discovery Engine is a backend analysis and insight-generation system that processes unstructured Voice of Customer (VoC) data from four specific public channels. Its sole purpose is to convert raw user conversations into structured, evidence-backed insights about why users save fashion items to their Myntra wishlists but don't purchase within 30 days.
 
 ### 1.1 Core Constraints
-- **Allowed Data Sources**: Apple App Store, Google Play Store, Reddit, YouTube.
-- **Text-Data Only**: The system processes exclusively textual data. No noise, sound, audio, or images are used.
-- **Strictly Discovery**: The system focuses purely on extracting behavioral barriers, unmet needs, and decision friction. It does not generate or deploy end-user features.
-- **Evidence Traceability**: Every insight must maintain a verifiable link back to the raw source data.
+- **Allowed Data Sources**: Apple App Store (RSS), Google Play Store, Reddit (via Apify), YouTube Comments.
+- **Text-Data Only**: The system processes exclusively textual data. No audio, images, or video frames are processed.
+- **Strictly Discovery**: Extracts behavioral barriers, unmet needs, and decision friction. Does not generate end-user features.
+- **Evidence Traceability**: Every insight maintains a verifiable link back to the raw source, including platform name and source URL.
+- **Zero Monetary Incentives**: Focuses on non-monetary barriers — sizing, fabric, photo-reality gaps, social validation, occasion timing.
 
 ---
 
 ## 2. End-to-End Analysis Pipeline
 
-The system is designed as a sequential, multi-stage data processing pipeline.
+The system is a sequential, multi-stage data processing pipeline.
 
 ```mermaid
 flowchart TD
     subgraph Stage1["1. Source Ingestion Layer"]
-        A1["Apple App Store API"]
-        A2["Google Play Store API"]
-        A3["Reddit Scraper (PRAW/Apify)"]
-        A4["YouTube Data API v3"]
+        A1["Apple App Store RSS (India, pages 1-10)"]
+        A2["Google Play Store (google-play-scraper, NEWEST + MOST_RELEVANT sort)"]
+        A3["Reddit (Apify trudax/reddit-scraper + apify/reddit-scraper — real posts & comments)"]
+        A4["YouTube (youtube-comment-downloader, Myntra haul/review videos)"]
     end
 
-    subgraph Stage2["2. Preprocessing & Normalization"]
-        B1["Deduplication & Noise Removal"]
-        B2["PII Scrubbing"]
-        B3["Text Normalization (e.g., Hinglish Parsing)"]
+    subgraph Stage2["2. Preprocessing & Sanitization"]
+        B1["PII Redaction (phone, order IDs, email)"]
+        B2["Text Length Bounds (20-1500 chars)"]
+        B3["Multi-Token Keyword Filter (avoids false positives like 'returns are fast!')"]
     end
 
-    subgraph Stage3["3. Relevance & Intent Filtering"]
-        C1["LLM Relevance Filter<br/>(Keeps only fashion/shopping/wishlist contexts)"]
+    subgraph Stage3["3. Relevance Gate"]
+        C1["Keyword Pair Matching: wishlist, size chart, fabric quality, see through, etc."]
+        C2["Deleted/removed post filtering"]
+        C3["In-memory deduplication by external_id before DB write"]
     end
 
-    subgraph Stage4["4. Extraction Engine"]
-        D1["Intent & Behavior Extraction<br/>(Purchase vs. Bookmarking)"]
-        D2["Pain-Point & Blocker Extraction<br/>(e.g., Size anxiety, Price ambiguity)"]
-        D3["Workaround & Alternative Consideration"]
+    subgraph Stage4["4. AI Classification Engine"]
+        D1["Primary: Groq Llama 3.3-70B (structured JSON output, temperature=0.05)"]
+        D2["Quote Fabrication Check (extracted quote must appear in source text)"]
+        D3["Fallback: NLP Heuristic Classifier (keyword proximity matching)"]
+        D4["Default: unrelated_other (not an arbitrary friction theme)"]
     end
 
-    subgraph Stage5["5. Clustering & Segmentation"]
-        E1["Semantic Embeddings (e.g., text-embedding-3)"]
-        E2["Thematic Clustering (HDBSCAN)"]
-        E3["User & Context Segmentation"]
+    subgraph Stage5["5. Thematic Aggregation"]
+        E1["7 Canonical Friction Themes + 1 Noise Bucket"]
+        E2["Intent Type Classification (high_intent_blocked, bookmarking_inspiration, etc.)"]
+        E3["Category Segmentation (Ethnic, Western, Dresses, Footwear, General)"]
+        E4["Sample Quote Attribution (text + platform + URL)"]
     end
 
-    subgraph Stage6["6. Quantification & Output"]
-        F1["Evidence Quantification Engine<br/>(Volume & Prevalence Calculation)"]
-        F2["Prioritization Matrix Scoring"]
-        F3["Structured Discovery Report Generation"]
+    subgraph Stage6["6. Output & Dashboard"]
+        F1["Supabase insights table (mention_count, pct_of_total, sample_quotes, segment_breakdown)"]
+        F2["Next.js Dashboard (Vercel) with platform-attributed verbatim evidence"]
+        F3["AI PM Copilot (Groq-grounded, zero hardcoded responses)"]
     end
 
     Stage1 --> Stage2
@@ -67,66 +72,119 @@ flowchart TD
 ## 3. Component Details
 
 ### 3.1 Source Collection Layer
-Dedicated connectors for the four permitted sources:
-- **Play Store / App Store**: Fetching reviews filtered by keywords (e.g., "wishlist", "save", "cart", "buy", "size").
-- **Reddit**: Ingesting threads from `r/IndianFashionAddicts` and `r/TwoXIndia` focusing on product evaluation, sizing, and styling advice.
-- **YouTube**: Scraping comments from Myntra try-on hauls and fashion influencer lookbooks.
 
-### 3.2 Data Cleaning & Relevance Layer
-- **Sanitization**: Removes emojis, spam, and Personally Identifiable Information (PII).
-- **Hinglish Support**: Standardizes code-mixed Indian English and colloquial expressions (e.g., "kapda patla hai" -> "fabric is thin").
-- **Relevance Gate**: An initial lightweight LLM prompt or classifier to discard irrelevant comments (e.g., video production quality) and retain only purchase-decision-related texts.
+| Source | Method | Scope |
+|---|---|---|
+| **Play Store** | `google-play-scraper` (direct, no Apify) | NEWEST + MOST_RELEVANT sort, up to 4,000 reviews per sort |
+| **App Store** | Apple iTunes RSS Feed (India store, pages 1–10) | Most recent ~500 reviews, handles 404 end-of-pages gracefully |
+| **Reddit** | Apify `trudax/reddit-scraper` + `apify/reddit-scraper` | Real post bodies + top 10-15 comments per post from Indian fashion subreddits |
+| **YouTube** | `youtube-comment-downloader` library | Top 100 comments per video, up to 12 Myntra haul/review videos |
 
-### 3.3 Core LLM Extraction Layer
-This is the intelligence core of the engine, using structured LLM outputs (e.g., JSON schema) to parse each relevant comment for:
-- **User Intent**: Differentiating genuine purchase intent from casual bookmarking.
-- **Purchase Blocker**: Specifically identifying what stopped the checkout.
-- **Information Need**: What data the user is seeking (e.g., realistic photos, exact measurements).
+### 3.2 Preprocessing & Keyword Filter
 
-### 3.4 Clustering & Quantification Engine
-- **Vectorization**: Unstructured extractions are converted into dense vector embeddings.
-- **Clustering**: Algorithms group similar vectors to surface recurring themes (e.g., "Inconsistent sizing across Western wear").
-- **Quantification**: Calculates the relative volume of these clusters against the total relevant dataset to provide interpretable prevalence metrics (e.g., "15% of fit-related hesitation is tied to bust measurement ambiguity").
+**PII Scrubbing** (applied before DB write):
+- Indian mobile numbers: `\+?[6-9]\d{9}` → `[PHONE]`
+- Myntra order IDs: `OD\d{9,}` → `[ORDER_ID]`
+- Email addresses → `[EMAIL]`
+
+**Multi-Token Keyword Filter** prevents false positives:
+- ❌ Single token `"return"` would match: *"Returns are hassle-free!"* (false positive)
+- ✅ Multi-token `"had to return"` correctly filters for friction signals
+- Requires meaningful phrases like `"size chart"`, `"true to size"`, `"fitting tight"`, `"see through"`, `"fabric quality"`
+
+### 3.3 AI Classification Engine
+
+**Primary: Groq Llama 3.3-70B**
+- `temperature=0.05` for high consistency
+- Strict JSON schema with `response_format={"type": "json_object"}`
+- **Quote Fabrication Check**: extracted quote verified as substring of source text before storage
+- Exponential backoff retry (3 attempts) with graceful fallback
+
+**Fallback: NLP Heuristic Classifier**
+- Ordered rule-based matching on keyword proximity
+- **Default is `unrelated_other`** — NOT an arbitrary friction theme
+- This prevents inflating any theme's counts with ambiguous or noisy reviews
+
+**Why no Vector DB / HDBSCAN in MVP?**
+The architecture originally considered semantic embedding + HDBSCAN clustering. For the MVP scope, a pre-defined 7-theme taxonomy with LLM classification was chosen because:
+1. Fixed taxonomy ensures interpretable, auditable percentages
+2. Zero additional infrastructure cost (no ChromaDB/Qdrant needed)
+3. LLM with few-shot examples matches or exceeds HDBSCAN's cluster labeling quality at this scale
+4. Future iteration can add embeddings to validate/discover new themes dynamically
+
+### 3.4 Intent Type Classification
+
+Unlike simple sentiment analysis, the engine distinguishes WHY the user saved an item:
+
+| Intent Type | Meaning |
+|---|---|
+| `high_intent_blocked` | User wants to buy but is blocked by uncertainty |
+| `comparison_shortlisting` | User is comparing multiple options |
+| `occasion_waiting` | User will buy when a specific event arrives |
+| `price_monitoring` | User watches for a price drop |
+| `bookmarking_inspiration` | Saved for inspiration, low purchase intent |
+| `no_clear_intent` | Intent cannot be determined |
+| `noise` | Unrelated to wishlist or purchase decision |
 
 ---
 
 ## 4. Data Storage & Traceability Architecture
 
-To meet the "Evidence and Trust Requirements", the data model ensures high traceability.
-
 ```mermaid
 erDiagram
-    RAW_SOURCE {
-        string source_id PK
-        string platform "Reddit, YouTube, etc."
-        string original_text
-        string context_url
+    RAW_FEEDBACK {
+        bigint id PK
+        text external_id UK
+        text platform "playstore, appstore, reddit, youtube"
+        text text "sanitized verbatim (PII-redacted)"
+        text url "direct source link"
+        text author
+        int rating "1-5 for app reviews, NULL for Reddit/YouTube"
+        text keyword_matched "triggering keyword phrase"
+        text theme "assigned friction theme key"
+        text classification_method "llm or heuristic_fallback"
+        boolean is_processed
+        timestamp scraped_at
     }
-    EXTRACTED_SIGNAL {
-        string signal_id PK
-        string source_id FK
-        string user_intent
-        string purchase_blocker
-        boolean is_high_intent
+    INSIGHTS {
+        bigint id PK
+        text theme UK "e.g. fit_sizing_anxiety"
+        text theme_label "e.g. Fit & Sizing Inconsistency"
+        int mention_count
+        numeric pct_of_total
+        text[] sample_quotes "plain text for backward compat"
+        jsonb sample_quotes_attributed "list of {text, platform, url}"
+        jsonb segment_breakdown "{Ethnic Wear: N, Western Wear: N, ...}"
+        jsonb intent_breakdown "{high_intent_blocked: N, bookmarking_inspiration: N, ...}"
+        text trend "stable (requires 2+ runs for real trend)"
+        timestamp updated_at
     }
-    THEME_CLUSTER {
-        string cluster_id PK
-        string theme_name
-        int evidence_volume
-    }
-    
-    RAW_SOURCE ||--o{ EXTRACTED_SIGNAL : "parsed into"
-    EXTRACTED_SIGNAL }o--|| THEME_CLUSTER : "belongs to"
+
+    RAW_FEEDBACK ||--o{ INSIGHTS : "classified into"
 ```
 
-- **PostgreSQL**: Stores the relational mapping from raw sources to extracted signals and final clusters, ensuring any PM can click a theme and see the exact Reddit comments or App Store reviews that generated it.
-- **Vector DB (e.g., ChromaDB/Qdrant)**: Stores embeddings for semantic search and clustering.
+**Traceability guarantee**: Every verbatim quote displayed in the dashboard includes `platform` (Play Store/App Store/Reddit/YouTube) and `url` (direct link to the source review or post).
 
 ---
 
-## 5. Output Interface (PM Discovery Dashboard)
+## 5. Automation (GitHub Actions)
 
-The final output is not a consumer-facing app, but an internal reporting structure that outputs:
-1. **Executive Summaries**: High-level overviews of top friction areas.
-2. **Evidence Tables**: Raw verbatim quotes linked to specific opportunity themes.
-3. **Prioritized Opportunity Matrix**: A ranked list of hypotheses for the PM to take into 5–6 primary user interviews for final validation.
+Daily cron at 03:00 UTC (08:30 AM IST):
+1. **Secret validation** — fails fast if any required key is missing
+2. **Multi-source ingestion** — all 4 sources in one run
+3. **AI normalization** — runs with `if: always()` so partial ingestion success is still processed
+4. **Supabase keepalive** — daily writes prevent free-tier project auto-pause
+
+---
+
+## 6. Output Interface (PM Discovery Dashboard)
+
+Live at Vercel (`*.vercel.app`). Provides:
+
+1. **Executive KPI Cards**: Live VoC record count, top 3 friction share, data sources
+2. **Quantified Friction Taxonomy**: Ranked friction themes with percentage bars, click to expand
+3. **Verbatim Evidence Panel**: Real customer quotes with platform badge + source link
+4. **Category Distribution**: Friction signal breakdown by fashion category (Ethnic/Western/Dresses/Footwear)
+5. **AI PM Discovery Copilot**: Chat interface grounded strictly in live Supabase data (no hardcoded responses)
+6. **Top 3 Drop-Off Drivers**: High-priority themes with non-monetary product lever recommendations
+7. **Evidence Transparency Note**: Clearly labels all insights as AI-inferred hypotheses for user research validation

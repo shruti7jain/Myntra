@@ -6,53 +6,91 @@ export async function POST(req) {
   try {
     const { message } = await req.json();
 
-    if (!message) {
+    if (!message || !message.trim()) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
+    // -------------------------------------------------------------------------
     // 1. Fetch current live insights from Supabase as grounding context
+    // -------------------------------------------------------------------------
     const { data: insights, error } = await supabase
       .from('insights')
       .select('*')
       .order('mention_count', { ascending: false });
 
+    if (error) {
+      console.error('Supabase error in chat route:', error.message);
+    }
+
     if (!insights || insights.length === 0) {
-      return NextResponse.json({ 
-        reply: "Live analysis data is temporarily unavailable — please try again shortly." 
+      return NextResponse.json({
+        reply:
+          'The discovery database has not been populated yet. ' +
+          'Please run the ingestion pipeline (scripts/ingestion/run_all_ingestion.py) ' +
+          'followed by the normalization script (scripts/normalization/process_insights.py) to load VoC data.',
       });
     }
 
+    const frictionInsights = insights.filter((i) => i.theme !== 'unrelated_other');
     const totalAnalyzed = insights.reduce((sum, i) => sum + (i.mention_count || 0), 0);
 
-    const contextStr = insights.map(i => 
-      `- Theme: ${i.theme_label} (${i.pct_of_total}% of drop-offs, ${i.mention_count} mentions)\n  Sample Quote: "${(i.sample_quotes || [])[0] || 'N/A'}"\n  Category Impact: ${JSON.stringify(i.segment_breakdown || {})}`
-    ).join('\n\n');
+    // Build context string from live DB data only — no hardcoded values
+    const contextStr = frictionInsights
+      .map((i) => {
+        const topQuote =
+          Array.isArray(i.sample_quotes) && i.sample_quotes.length > 0
+            ? typeof i.sample_quotes[0] === 'string'
+              ? i.sample_quotes[0]
+              : i.sample_quotes[0]?.text || 'N/A'
+            : 'N/A';
+        const segBreakdown = i.segment_breakdown
+          ? Object.entries(i.segment_breakdown)
+              .filter(([, v]) => v > 0)
+              .sort(([, a], [, b]) => b - a)
+              .slice(0, 3)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(', ')
+          : 'N/A';
+        return (
+          `Theme: ${i.theme_label}\n` +
+          `  - Key: ${i.theme}\n` +
+          `  - Mention count: ${i.mention_count} (${i.pct_of_total}% of friction signals)\n` +
+          `  - Top categories: ${segBreakdown}\n` +
+          `  - Sample customer verbatim: "${topQuote}"`
+        );
+      })
+      .join('\n\n');
 
-    const systemPrompt = `You are the Myntra Wishlist AI Discovery Copilot. You assist Product Managers on the Growth Team in analyzing why users add fashion items to their wishlist but do not convert them to purchases within 30 days.
+    const systemPrompt = `You are the Myntra Wishlist AI Discovery Copilot. You help Product Managers on the Growth Team understand why users add fashion items to their wishlist but don't purchase within 30 days.
 
-Here is the CURRENT live Voice of Customer (VoC) quantified intelligence from our multi-source discovery engine (${totalAnalyzed.toLocaleString()} verbatims across Play Store, App Store, Reddit, YouTube):
+LIVE VoC DATA (${totalAnalyzed.toLocaleString()} verbatims analysed across Play Store, App Store, Reddit, YouTube):
 
 ${contextStr}
 
-Strict Constraints:
-1. Ground your answers strictly on the empirical data above.
-2. The strategic rule is ZERO MONETARY INCENTIVES (no discounts, coupons, cashback). Focus purely on non-monetary levers: size clarity, fabric tactile confidence, model try-on proof, occasion countdown, and styling pairing.
-3. Be concise, actionable, structured, and speak directly to a Product Manager.`;
+STRICT RULES:
+1. Ground ALL answers exclusively on the empirical data above. Never invent statistics, themes, or quotes.
+2. If asked about data not present in the context, say "This is not captured in the current dataset" — don't guess.
+3. Strategic constraint: ZERO MONETARY INCENTIVES (no discounts, coupons, cashback). Focus on non-monetary levers: size/fit clarity, fabric tactile confidence, photo-reality alignment, occasion timing, styling context, and social validation features.
+4. Be concise, structured, and speak directly to a Product Manager — use bullet points and clear headings.
+5. When quoting a customer, label it clearly as "Customer verbatim:" and only use quotes from the data provided above.
+6. Distinguish between observed evidence (from the VoC data) and your recommendations (labeled as "PM Recommendation:").`;
 
-    // 2. Try calling Groq if API key exists and is valid
+    // -------------------------------------------------------------------------
+    // 2. Try Groq LLM first
+    // -------------------------------------------------------------------------
     const apiKey = process.env.GROQ_API_KEY;
-    
-    if (apiKey && apiKey.startsWith("gsk_") && apiKey.length > 20) {
+
+    if (apiKey && apiKey.startsWith('gsk_') && apiKey.length > 20) {
       try {
         const groq = new Groq({ apiKey });
         const completion = await groq.chat.completions.create({
-          model: 'llama-3.3-70b-versatile',
+          model: 'groq/compound',
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: message }
+            { role: 'user', content: message },
           ],
-          temperature: 0.2,
-          max_tokens: 600
+          temperature: 0.15,
+          max_tokens: 700,
         });
 
         const reply = completion.choices[0]?.message?.content;
@@ -60,55 +98,128 @@ Strict Constraints:
           return NextResponse.json({ reply });
         }
       } catch (err) {
-        console.warn("Groq API call failed in chat route:", err.message);
+        console.warn('Groq API call failed in chat route:', err.message);
+        // Fall through to structured fallback
       }
     }
 
-    // 3. Fallback grounded answer DYNAMICALLY constructed from live Supabase data (Zero hardcoded numbers)
+    // -------------------------------------------------------------------------
+    // 3. Structured fallback — dynamically constructed from LIVE Supabase data
+    //    No hardcoded quotes, numbers, or fabricated examples.
+    // -------------------------------------------------------------------------
     const queryLower = message.toLowerCase();
-    
-    // Map helper to find theme
-    const findTheme = (themeKey) => insights.find(i => i.theme === themeKey) || {
-      theme_label: themeKey,
-      pct_of_total: '0.00',
-      mention_count: 0,
-      sample_quotes: []
+
+    const findTheme = (key) =>
+      frictionInsights.find((i) => i.theme === key) || null;
+
+    // Helper: get real first quote from a theme (no fabrication)
+    const getQuote = (themeObj) => {
+      if (!themeObj) return null;
+      const quotes = themeObj.sample_quotes || [];
+      if (quotes.length === 0) return null;
+      return typeof quotes[0] === 'string' ? quotes[0] : quotes[0]?.text || null;
     };
 
-    const fabricTheme = findTheme('fabric_quality_ambiguity');
-    const fitTheme = findTheme('fit_sizing_anxiety');
-    const photoTheme = findTheme('visual_reality_discrepancy');
+    const fabricTheme   = findTheme('fabric_quality_ambiguity');
+    const fitTheme      = findTheme('fit_sizing_anxiety');
+    const photoTheme    = findTheme('visual_reality_discrepancy');
     const occasionTheme = findTheme('occasion_timing_delay');
+    const socialTheme   = findTheme('social_validation_delay');
+    const stylingTheme  = findTheme('styling_pairing_doubt');
+    const choiceTheme   = findTheme('choice_paralysis_shortlist');
 
-    let reply = "";
+    let reply = '';
 
-    if (queryLower.includes("ethnic") || queryLower.includes("kurti") || queryLower.includes("kurta") || queryLower.includes("size") || queryLower.includes("fit")) {
-      const quote = (fitTheme.sample_quotes && fitTheme.sample_quotes[0]) ? `"${fitTheme.sample_quotes[0]}"` : "Shoulder & bust proportions vary across brands.";
-      reply = `**Key Finding for ${fitTheme.theme_label} (${fitTheme.pct_of_total}% of Drop-offs / ${fitTheme.mention_count.toLocaleString()} Mentions):**\n\nOur live VoC data reveals that shoppers heavily hesitate to checkout Ethnic Wear (Kurtas/Kurtis) due to **inconsistent bust and shoulder proportions across brands** (like Anouk vs. Roadster). Users add multiple sizes to their wishlist or abandon them out of return anxiety.\n\n💬 *Customer Verbatim:* ${quote}\n\n💡 **Recommended Non-Monetary Action**: Introduce body-measurement match sliders and customer review tags showing buyer height/bust measurements calibrated against previous non-returned orders.`;
-    
-    } else if (queryLower.includes("fabric") || queryLower.includes("quality") || queryLower.includes("dress") || queryLower.includes("material") || queryLower.includes("see through")) {
-      const quote = (fabricTheme.sample_quotes && fabricTheme.sample_quotes[0]) ? `"${fabricTheme.sample_quotes[0]}"` : "Transparent material concerns and uncertainty on lining thickness.";
-      reply = `**Key Finding for ${fabricTheme.theme_label} (${fabricTheme.pct_of_total}% of Drop-offs / ${fabricTheme.mention_count.toLocaleString()} Mentions):**\n\nFabric tactile ambiguity is our largest single purchase barrier. Shoppers consistently express fear that fabrics are too sheer, thin, or will shrink after one wash without tactile trial.\n\n💬 *Customer Verbatim:* ${quote}\n\n💡 **Recommended Non-Monetary Action**: Add fabric transparency indicators (1-5 opacity scale), wash durability badges, and unedited customer try-on photos.`;
-    
-    } else if (queryLower.includes("photo") || queryLower.includes("reality") || queryLower.includes("color") || queryLower.includes("shoe") || queryLower.includes("footwear")) {
-      const quote = (photoTheme.sample_quotes && photoTheme.sample_quotes[0]) ? `"${photoTheme.sample_quotes[0]}"` : "Denim shade and stretch feel different under daylight compared to studio lights.";
-      reply = `**Key Finding for ${photoTheme.theme_label} (${photoTheme.pct_of_total}% of Drop-offs / ${photoTheme.mention_count.toLocaleString()} Mentions):**\n\nUsers report significant variance between studio lighting photos and natural daylight reality, especially in Footwear and Western Wear.\n\n💬 *Customer Verbatim:* ${quote}\n\n💡 **Recommended Non-Monetary Action**: Enable community photo reviews tagged by natural daylight vs indoor lighting to eliminate color and finish doubt.`;
-    
+    if (queryLower.includes('ethnic') || queryLower.includes('kurti') || queryLower.includes('kurta')) {
+      if (fitTheme) {
+        const q = getQuote(fitTheme);
+        reply =
+          `**${fitTheme.theme_label} — Ethnic Wear Focus**\n\n` +
+          `Signal: ${fitTheme.mention_count} mentions (${fitTheme.pct_of_total}% of friction)\n\n` +
+          (q ? `Customer verbatim: "${q}"\n\n` : '') +
+          `**PM Recommendation:** Ethnic Wear (kurtas, kurtis) has the highest sizing ambiguity due to brand-specific size charts. ` +
+          `Surface a body-measurement match confidence score on wishlisted ethnic items, calibrated from past non-returned orders in the same size.`;
+      } else {
+        reply = 'No specific ethnic wear friction data is captured in the current dataset. Run the ingestion pipeline to populate more data.';
+      }
+
+    } else if (queryLower.includes('fabric') || queryLower.includes('quality') || queryLower.includes('material') || queryLower.includes('see through')) {
+      if (fabricTheme) {
+        const q = getQuote(fabricTheme);
+        reply =
+          `**${fabricTheme.theme_label}**\n\n` +
+          `Signal: ${fabricTheme.mention_count} mentions (${fabricTheme.pct_of_total}% of friction)\n\n` +
+          (q ? `Customer verbatim: "${q}"\n\n` : '') +
+          `**PM Recommendation:** Fabric tactile ambiguity is a top purchase blocker. ` +
+          `Add a 1–5 Sheerness Scale, GSM thickness badge, and buyer wash-durability tags from verified purchasers. ` +
+          `Unedited customer try-on photos with fabric close-ups directly reduce this friction.`;
+      } else {
+        reply = 'No fabric quality friction data is captured yet. Run the ingestion pipeline first.';
+      }
+
+    } else if (queryLower.includes('photo') || queryLower.includes('color') || queryLower.includes('colour') || queryLower.includes('reality') || queryLower.includes('image')) {
+      if (photoTheme) {
+        const q = getQuote(photoTheme);
+        reply =
+          `**${photoTheme.theme_label}**\n\n` +
+          `Signal: ${photoTheme.mention_count} mentions (${photoTheme.pct_of_total}% of friction)\n\n` +
+          (q ? `Customer verbatim: "${q}"\n\n` : '') +
+          `**PM Recommendation:** Studio lighting creates a gap between the product photo and real appearance. ` +
+          `Enable customer photo reviews tagged by natural daylight vs. indoor lighting to eliminate color and finish doubt.`;
+      } else {
+        reply = 'No photo-reality discrepancy data captured yet. Run ingestion first.';
+      }
+
+    } else if (queryLower.includes('size') || queryLower.includes('fit') || queryLower.includes('fitting') || queryLower.includes('shoulder') || queryLower.includes('bust')) {
+      if (fitTheme) {
+        const q = getQuote(fitTheme);
+        reply =
+          `**${fitTheme.theme_label}**\n\n` +
+          `Signal: ${fitTheme.mention_count} mentions (${fitTheme.pct_of_total}% of friction)\n\n` +
+          (q ? `Customer verbatim: "${q}"\n\n` : '') +
+          `**PM Recommendation:** Shoulder/bust proportions vary significantly across brands. ` +
+          `Introduce an AI body-measurement TrueFit confidence score on wishlisted items, using past non-returned order data as calibration.`;
+      } else {
+        reply = 'No fit/sizing friction data captured yet. Run ingestion first.';
+      }
+
+    } else if (queryLower.includes('intent') || queryLower.includes('bookmark') || queryLower.includes('wishlist use') || queryLower.includes('saving')) {
+      reply =
+        `**Wishlist Intent Breakdown**\n\n` +
+        `The discovery engine classifies wishlist behaviour into these intent types:\n` +
+        `• **high_intent_blocked** — User wants to buy but is blocked by uncertainty\n` +
+        `• **comparison_shortlisting** — User is comparing multiple options\n` +
+        `• **occasion_waiting** — User will buy when a specific event arrives\n` +
+        `• **price_monitoring** — User watches for a price drop\n` +
+        `• **bookmarking_inspiration** — Saved for inspiration, low purchase intent\n\n` +
+        `**PM Recommendation:** Target high_intent_blocked and occasion_waiting users first — ` +
+        `they have the highest conversion potential within 30 days without monetary incentives.`;
+
     } else {
-      // Top 4 dynamic ranked list
-      const topThemesList = insights
-        .filter(t => t.theme !== 'unrelated_other')
+      // General executive summary from live data
+      const topList = frictionInsights
         .slice(0, 4)
-        .map((t, idx) => `${idx + 1}. **${t.theme_label} (${t.pct_of_total}%)**: ${t.mention_count.toLocaleString()} mentions.`)
-        .join('\n');
+        .map((t, i) => {
+          const q = getQuote(t);
+          return (
+            `${i + 1}. **${t.theme_label}** — ${t.mention_count} mentions (${t.pct_of_total}%)` +
+            (q ? `\n   Evidence: "${q.slice(0, 100)}${q.length > 100 ? '...' : ''}"` : '')
+          );
+        })
+        .join('\n\n');
 
-      reply = `**Executive Discovery Summary across ${totalAnalyzed.toLocaleString()} Live Verbatims:**\n\n${topThemesList}\n\n💡 **Top Non-Monetary Recommendation**: Focus engineering and UX on tactile clarity (Opacity Gauge) and TrueFit confidence before checkout.\n\n*All insights derived live from Supabase VoC intelligence (Play Store, App Store, Reddit, and YouTube).*`;
+      reply =
+        `**Executive Discovery Summary — ${totalAnalyzed.toLocaleString()} VoC Records**\n\n` +
+        `Top friction themes blocking wishlist-to-purchase conversion:\n\n` +
+        topList +
+        `\n\n**PM Recommendation:** Address the top 2 themes first — they collectively represent the majority of non-monetary friction. ` +
+        `Validate through 5–6 user interviews (Part 3) before building a solution.`;
     }
 
     return NextResponse.json({ reply });
 
   } catch (error) {
-    console.error("Chat API error:", error);
+    console.error('Chat API error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

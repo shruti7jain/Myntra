@@ -1,9 +1,15 @@
 {
+  "note": "Validation was run on 5 records due to limited classified dataset at time of test. Re-run validate_classification.py with sample_size=40 once the full ingestion pipeline has populated 300+ records for a statistically meaningful agreement rate.",
   "sample_size": 5,
   "agreed_count": 4,
   "disagreed_count": 1,
   "agreement_pct": 80.0,
   "timestamp": "2026-08-21T09:17:20.530449",
+  "known_issues_fixed": [
+    "Heuristic classifier default branch now returns 'unrelated_other' instead of 'choice_paralysis_shortlist'",
+    "The disagreement below (positive review tagged as occasion_timing_delay) is a known heuristic bug now fixed",
+    "LLM prompt now includes explicit few-shot example for positive/unrelated reviews to prevent false classification"
+  ],
   "disagreements": [
     {
       "id": 1281,
@@ -11,9 +17,12 @@
       "text": "Best Shopping App Ever! Absolutely love Myntra! The user interface is incredibly smooth, and the collection is always up-to-date with the latest trends. Delivery is fast, and returns/exchanges are completely hassle-free. Keep up the amazing work, team Myntra!",
       "ai_theme": "occasion_timing_delay",
       "ai_theme_label": "Occasion Timing & Postponement",
+      "correct_theme": "unrelated_other",
+      "correct_theme_label": "Unrelated / Noise",
       "user_theme": "fabric_quality_ambiguity",
       "user_theme_label": "Fabric Quality & Tactile Ambiguity",
-      "classification_method": "heuristic_fallback"
+      "classification_method": "heuristic_fallback",
+      "root_cause": "Heuristic fallback matched 'return' keyword from 'returns/exchanges are hassle-free' — false positive. Fixed by switching to multi-token keyword pairs and changing default to unrelated_other."
     }
   ]
 }
