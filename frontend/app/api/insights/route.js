@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Fetch all processed raw feedback
+    // Fetch all processed raw feedback for theme analysis
     const { data: rawData, error } = await supabase
       .from('raw_feedback')
       .select('theme, platform')
@@ -15,9 +15,28 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Get total count of ALL records (for the "1,486 analysed" KPI)
     const { count: rawCount, error: countErr } = await supabase
       .from('raw_feedback')
       .select('*', { count: 'exact', head: true });
+
+    // Count per platform using exact counts (bypasses Supabase 1000-row limit)
+    const platformNames = ['playstore', 'appstore', 'reddit', 'youtube'];
+    const PLATFORM_DISPLAY = {
+      'playstore': 'Play Store',
+      'appstore': 'App Store',
+      'reddit': 'Reddit',
+      'youtube': 'YouTube'
+    };
+    const platformCountResults = await Promise.all(
+      platformNames.map(async (plat) => {
+        const { count, error: platErr } = await supabase
+          .from('raw_feedback')
+          .select('*', { count: 'exact', head: true })
+          .eq('platform', plat);
+        return { name: PLATFORM_DISPLAY[plat], count: count || 0 };
+      })
+    );
 
     // Compute live metrics
     let total_friction_count = 0;
@@ -25,15 +44,13 @@ export async function GET() {
     const themeCounts = {};
     const platformCounts = {};
 
-    rawData.forEach(row => {
-      // Platform breakdown (all analyzed feedback)
-      let plat = row.platform || 'Other';
-      if (plat === 'playstore') plat = 'Play Store';
-      if (plat === 'appstore') plat = 'App Store';
-      if (plat === 'reddit') plat = 'Reddit';
-      if (plat === 'youtube') plat = 'YouTube';
-      platformCounts[plat] = (platformCounts[plat] || 0) + 1;
+    // Use the per-platform count results
+    platformCountResults.forEach(p => {
+      platformCounts[p.name] = p.count;
+    });
 
+    // Theme analysis from processed records only
+    rawData.forEach(row => {
       if (!row.theme) {
         noise_count++;
         return;
@@ -45,6 +62,10 @@ export async function GET() {
         themeCounts[row.theme] = (themeCounts[row.theme] || 0) + 1;
       }
     });
+
+    // Noise = total analysed - friction signals identified
+    const totalAnalyzed = rawCount || 1486;
+    noise_count = totalAnalyzed - total_friction_count;
 
     // Map to canonical labels
     const CANONICAL_LABELS = {
@@ -75,7 +96,7 @@ export async function GET() {
     return NextResponse.json({
       insights,
       platforms,
-      total_raw_analyzed: rawCount || 1486,
+      total_raw_analyzed: totalAnalyzed,
       total_friction_count,
       noise_count,
       updated_at: new Date().toISOString()
