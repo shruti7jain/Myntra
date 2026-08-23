@@ -36,11 +36,13 @@ const REAL_QUOTES = [
 ];
 
 const OPPORTUNITIES = [
-  { id: 'fit_sizing_anxiety', label: 'AI TrueFit Body Score', tag: 'Solves Fit & Sizing', impact: 'Critical', what: 'A personalised 1–100 fit confidence score based on the user\'s body measurements and their verified non-return purchase history across similar items.', why: 'Brand size charts are inconsistent across categories — an M in Western wear doesn\'t match an M in Ethnic wear. High-intent users give up rather than risk ordering the wrong size.', workaround: 'Users leave Myntra to search Reddit threads like "Does Anouk run large?" before they can commit to buying.' },
-  { id: 'fabric_quality_ambiguity', label: 'Tactile Confidence Tags', tag: 'Solves Fabric Ambiguity', impact: 'High', what: 'A verified buyer-sourced Sheerness Scale (1–5) and GSM thickness badge shown on every fabric-heavy listing — sourced exclusively from purchase-verified reviewers.', why: 'Studio photography with professional lighting hides fabric sheerness and structural thinness. There is no way for users to assess real material quality from product images.', workaround: 'Users watch YouTube unboxing hauls under natural light before ordering — a multi-hour detour that often kills purchase momentum.' },
-  { id: 'styling_pairing_doubt', label: 'Contextual Outfit Builder', tag: 'Solves Styling Doubt', impact: 'Medium', what: '"Style it with" AI outfit recommendations using real buyer-uploaded community photos — not studio model shoots.', why: 'Users wishlist items they love visually but cannot picture wearing with their existing wardrobe. Without a clear outfit plan, items stay saved indefinitely.', workaround: 'Screenshots sent to WhatsApp groups asking for outfit-pairing advice — takes hours and routinely kills purchase intent while waiting for replies.' },
-  { id: 'social_validation_delay', label: 'In-App Share & Vote', tag: 'Solves Social Validation', impact: 'Medium', what: 'A native wishlist share card with quick reaction options, keeping the social validation loop inside Myntra with purchase as the immediate next step.', why: 'Users want peer approval before checkout, especially for gifting and festive wear. The decision is suspended pending WhatsApp or Instagram responses that may never come.', workaround: 'Instagram story polls — "should I buy this?" — all happening outside Myntra, creating high exit and non-return risk.' },
-  { id: 'choice_paralysis_shortlist', label: 'Smart Wishlist Curator', tag: 'Solves Choice Paralysis', impact: 'Low–Medium', what: 'An AI-ranked shortlist of the top 3 "Best Match" items from the user\'s wishlist, surfaced by occasion, fit confidence, and review consensus.', why: 'Users accumulate 40–60+ undifferentiated saved items with no prioritisation. Cognitive overload leads to total abandonment of the wishlist.', workaround: 'Manual multi-tab browser comparison — most users give up and mass-delete the entire wishlist rather than choose.' }
+  { id: 'fit_sizing_anxiety', theme: 'fit_sizing_anxiety', label: 'AI TrueFit Body Score', tag: 'Solves Fit & Sizing', impact: 'Critical', what: 'A personalised 1–100 fit confidence score based on the user\'s body measurements and their verified non-return purchase history across similar items.', why: 'Brand size charts are inconsistent across categories — an M in Western wear doesn\'t match an M in Ethnic wear. High-intent users give up rather than risk ordering the wrong size.', workaround: 'Users leave Myntra to search Reddit threads like "Does Anouk run large?" before they can commit to buying.' },
+  { id: 'fabric_quality_ambiguity', theme: 'fabric_quality_ambiguity', label: 'Tactile Confidence Tags', tag: 'Solves Fabric Ambiguity', impact: 'High', what: 'A verified buyer-sourced Sheerness Scale (1–5) and GSM thickness badge shown on every fabric-heavy listing — sourced exclusively from purchase-verified reviewers.', why: 'Studio photography with professional lighting hides fabric sheerness and structural thinness. There is no way for users to assess real material quality from product images.', workaround: 'Users watch YouTube unboxing hauls under natural light before ordering — a multi-hour detour that often kills purchase momentum.' },
+  { id: 'occasion_timing_delay', theme: 'occasion_timing_delay', label: 'Event-Aware Wishlist Reminders', tag: 'Solves Occasion Timing', impact: 'High', what: 'Smart occasion-aware nudges that remind users about wishlisted items as their saved event/occasion approaches — with stock alerts and styling suggestions.', why: 'Users save items for future events (weddings, festivals, trips) but delay purchase until closer to the date, risking out-of-stock and losing the item.', workaround: 'Users set personal phone reminders or hope they remember to check back before the event — many forget and buy from local stores instead.' },
+  { id: 'visual_reality_discrepancy', theme: 'visual_reality_discrepancy', label: 'Real-Light Photo Verifier', tag: 'Solves Photo Mismatch', impact: 'Medium', what: 'A buyer-uploaded photo gallery with lighting tags (natural light, indoor, flash) so users can see the real product appearance beyond studio shots.', why: 'Studio photography with professional lighting creates unrealistic color and finish expectations. Users fear the product will look different in person.', workaround: 'Users search YouTube and Instagram for real customer photos and unboxing videos before ordering — adding hours of research friction.' },
+  { id: 'styling_pairing_doubt', theme: 'styling_pairing_doubt', label: 'Contextual Outfit Builder', tag: 'Solves Styling Doubt', impact: 'Medium', what: '"Style it with" AI outfit recommendations using real buyer-uploaded community photos — not studio model shoots.', why: 'Users wishlist items they love visually but cannot picture wearing with their existing wardrobe. Without a clear outfit plan, items stay saved indefinitely.', workaround: 'Screenshots sent to WhatsApp groups asking for outfit-pairing advice — takes hours and routinely kills purchase intent while waiting for replies.' },
+  { id: 'social_validation_delay', theme: 'social_validation_delay', label: 'In-App Share & Vote', tag: 'Solves Social Validation', impact: 'Medium', what: 'A native wishlist share card with quick reaction options, keeping the social validation loop inside Myntra with purchase as the immediate next step.', why: 'Users want peer approval before checkout, especially for gifting and festive wear. The decision is suspended pending WhatsApp or Instagram responses that may never come.', workaround: 'Instagram story polls — "should I buy this?" — all happening outside Myntra, creating high exit and non-return risk.' },
+  { id: 'choice_paralysis_shortlist', theme: 'choice_paralysis_shortlist', label: 'Smart Wishlist Curator', tag: 'Solves Choice Paralysis', impact: 'Low–Medium', what: 'An AI-ranked shortlist of the top 3 "Best Match" items from the user\'s wishlist, surfaced by occasion, fit confidence, and review consensus.', why: 'Users accumulate 40–60+ undifferentiated saved items with no prioritisation. Cognitive overload leads to total abandonment of the wishlist.', workaround: 'Manual multi-tab browser comparison — most users give up and mass-delete the entire wishlist rather than choose.' }
 ];
 
 const PLATFORM_BADGE = {
@@ -334,7 +336,7 @@ export default function MyntraDiscoveryEngine() {
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-black text-[#d1d5db] w-3">{i + 1}</span>
-                            <span className="text-[12px] font-bold text-[#282C3F]">{t.label}</span>
+                            <span className="text-[12px] font-bold text-[#282C3F]">{t.theme_label || t.label}</span>
                           </div>
                           <span className="text-[12px] font-black text-[#ff3f6c]">{t.pct}%</span>
                         </div>
@@ -381,6 +383,7 @@ export default function MyntraDiscoveryEngine() {
 
                   <div className="bg-white border border-[#e9e9eb] rounded-xl p-4">
                     <p className="text-[11px] font-black text-[#94969f] uppercase tracking-wider mb-3">Not every wishlist save = purchase intent</p>
+                    <p className="text-[9px] text-[#94969f] mb-2 -mt-1 italic">AI-estimated from VoC signal classification</p>
                     <div className="space-y-2">
                       {[
                         { label: 'High intent, blocked by uncertainty', pct: '38%' },
@@ -442,11 +445,11 @@ export default function MyntraDiscoveryEngine() {
               <div className="bg-white border border-[#e9e9eb] rounded-xl overflow-hidden mt-5">
                 <div className="px-5 py-4 border-b border-[#e9e9eb]">
                   <p className="text-[13px] font-bold text-[#282C3F]">Actionable Product Opportunities</p>
-                  <p className="text-[10px] text-[#94969f] mt-0.5">Top 5 data-backed interventions to reduce wishlist abandonment</p>
+                  <p className="text-[10px] text-[#94969f] mt-0.5">Top 7 data-backed interventions to reduce wishlist abandonment</p>
                 </div>
                 <div className="divide-y divide-[#e9e9eb]">
                   {OPPORTUNITIES.map((opp, i) => {
-                    const themeData = themes.find(t => t.id === opp.id) || { pct: 0 };
+                    const themeData = themes.find(t => t.theme === opp.theme || t.id === opp.id) || { pct: 0 };
                     return (
                     <div key={opp.id} className="p-5 hover:bg-[#fafafa] transition-colors flex gap-5">
                       <div className="w-8 h-8 rounded-full bg-[#282C3F] text-white flex-shrink-0 flex items-center justify-center font-black text-[12px]">

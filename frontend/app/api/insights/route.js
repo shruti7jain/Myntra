@@ -61,6 +61,7 @@ export async function GET() {
       id: themeId,
       theme: themeId,
       theme_label: CANONICAL_LABELS[themeId] || themeId,
+      label: CANONICAL_LABELS[themeId] || themeId,
       mention_count: count,
       count: count, // add count alias for ui mapping
       pct: total_friction_count > 0 ? Math.round((count / total_friction_count) * 100) : 0
