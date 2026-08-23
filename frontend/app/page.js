@@ -86,6 +86,12 @@ export default function MyntraDiscoveryEngine() {
   const [showAllQuotes, setShowAllQuotes] = useState(false);
   const [lastSynced, setLastSynced] = useState(null);
   const [themes, setThemes] = useState([]);
+  const [platforms, setPlatforms] = useState([
+    { name: 'Play Store', count: 0 },
+    { name: 'Reddit', count: 0 },
+    { name: 'App Store', count: 0 },
+    { name: 'YouTube', count: 0 }
+  ]);
   const [quotes, setQuotes] = useState([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [totalFrictionCount, setTotalFrictionCount] = useState(0);
@@ -118,6 +124,7 @@ export default function MyntraDiscoveryEngine() {
       if (d.total_raw_analyzed) setTotalAnalyzed(d.total_raw_analyzed);
       if (d.total_friction_count !== undefined) setTotalFrictionCount(d.total_friction_count);
       if (d.noise_count !== undefined) setNoiseCount(d.noise_count);
+      if (d.platforms?.length > 0) setPlatforms(d.platforms);
       if (d.insights?.length > 0) {
         setDbInsights(d.insights);
         setThemes(d.insights);
@@ -210,13 +217,8 @@ export default function MyntraDiscoveryEngine() {
 
         {/* Sources */}
         <div className="p-4 border-t border-[#e9e9eb]">
-          <p className="text-[9px] font-black uppercase tracking-widest text-[#94969f] mb-2">Data Sources (1,486)</p>
-          {[
-            { name: 'Play Store', count: 642 },
-            { name: 'Reddit', count: 412 },
-            { name: 'App Store', count: 318 },
-            { name: 'YouTube', count: 114 }
-          ].map(s => (
+          <p className="text-[9px] font-black uppercase tracking-widest text-[#94969f] mb-2">Data Sources ({totalAnalyzed.toLocaleString()})</p>
+          {platforms.map(s => (
             <div key={s.name} className="flex items-center justify-between text-[10px] text-[#535766] mb-1">
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#ff3f6c] flex-shrink-0" />

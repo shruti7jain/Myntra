@@ -8,7 +8,7 @@ export async function GET() {
     // Fetch all processed raw feedback
     const { data: rawData, error } = await supabase
       .from('raw_feedback')
-      .select('theme')
+      .select('theme, platform')
       .eq('is_processed', true);
 
     if (error) {
@@ -23,8 +23,17 @@ export async function GET() {
     let total_friction_count = 0;
     let noise_count = 0;
     const themeCounts = {};
+    const platformCounts = {};
 
     rawData.forEach(row => {
+      // Platform breakdown (all analyzed feedback)
+      let plat = row.platform || 'Other';
+      if (plat === 'playstore') plat = 'Play Store';
+      if (plat === 'appstore') plat = 'App Store';
+      if (plat === 'reddit') plat = 'Reddit';
+      if (plat === 'youtube') plat = 'YouTube';
+      platformCounts[plat] = (platformCounts[plat] || 0) + 1;
+
       if (!row.theme) {
         noise_count++;
         return;
@@ -57,8 +66,14 @@ export async function GET() {
       pct: total_friction_count > 0 ? Math.round((count / total_friction_count) * 100) : 0
     })).sort((a, b) => b.mention_count - a.mention_count);
 
+    const platforms = Object.entries(platformCounts).map(([name, count]) => ({
+      name,
+      count
+    })).sort((a, b) => b.count - a.count);
+
     return NextResponse.json({
       insights,
+      platforms,
       total_raw_analyzed: rawCount || 1486,
       total_friction_count,
       noise_count,
