@@ -10,20 +10,12 @@ import {
 
 // ─── All numbers are consistent:
 //   1,486 total verbatims scraped
-//   412   noise filtered out (off-topic, positives, delivery complaints)
-//   1,074 friction signals identified (1,486 - 412)
-//   Theme percentages = % of 1,074 friction signals
+//   {noiseCount.toLocaleString()}   noise filtered out (off-topic, positives, delivery complaints)
+//   {totalFrictionCount.toLocaleString()} friction signals identified (1,486 - {noiseCount.toLocaleString()})
+//   Theme percentages = % of {totalFrictionCount.toLocaleString()} friction signals
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FRICTION_THEMES = [
-  { id: 'fit_sizing_anxiety', label: 'Fit & Sizing Inconsistency',          pct: 30, count: 322 },
-  { id: 'fabric_quality_ambiguity', label: 'Fabric Quality Ambiguity',             pct: 22, count: 236 },
-  { id: 'visual_reality_discrepancy', label: 'Product Photo vs. Reality Mismatch',   pct: 16, count: 172 },
-  { id: 'styling_pairing_doubt', label: 'Styling & Wardrobe Pairing Doubt',     pct: 12, count: 129 },
-  { id: 'social_validation_delay', label: 'Social Validation Delay',              pct: 9,  count: 97 },
-  { id: 'choice_paralysis_shortlist', label: 'Choice Paralysis & Wishlist Overload', pct: 7,  count: 75 },
-  { id: 'occasion_timing_delay', label: 'Occasion Timing & Postponement',       pct: 4,  count: 43 },
-];
+
 
 const REAL_QUOTES = [
   { text: 'Toh last dupatta bhi see through tha — photos pe dikh hi nahi raha tha. Wishlisted for 3 weeks then gave up.', platform: 'Reddit',     theme: 'Fabric Quality' },
@@ -44,51 +36,11 @@ const REAL_QUOTES = [
 ];
 
 const OPPORTUNITIES = [
-  {
-    id: 'fit', rank: 1, pct: 33,
-    label: 'AI TrueFit Body Score',
-    tag: 'Solves Fit & Sizing (33% of friction)',
-    impact: 'Critical',
-    what: 'A personalised 1–100 fit confidence score based on the user\'s body measurements and their verified non-return purchase history across similar items.',
-    why: 'Brand size charts are inconsistent across categories — an M in Western wear doesn\'t match an M in Ethnic wear. High-intent users give up rather than risk ordering the wrong size.',
-    workaround: 'Users leave Myntra to search Reddit threads like "Does Anouk run large?" before they can commit to buying.',
-  },
-  {
-    id: 'fabric', rank: 2, pct: 25,
-    label: 'Tactile Confidence Tags',
-    tag: 'Solves Fabric Ambiguity (25% of friction)',
-    impact: 'High',
-    what: 'A verified buyer-sourced Sheerness Scale (1–5) and GSM thickness badge shown on every fabric-heavy listing — sourced exclusively from purchase-verified reviewers.',
-    why: 'Studio photography with professional lighting hides fabric sheerness and structural thinness. There is no way for users to assess real material quality from product images.',
-    workaround: 'Users watch YouTube unboxing hauls under natural light before ordering — a multi-hour detour that often kills purchase momentum.',
-  },
-  {
-    id: 'styling', rank: 3, pct: 18,
-    label: 'Contextual Outfit Builder',
-    tag: 'Solves Styling Doubt (18% of friction)',
-    impact: 'Medium',
-    what: '"Style it with" AI outfit recommendations using real buyer-uploaded community photos — not studio model shoots.',
-    why: 'Users wishlist items they love visually but cannot picture wearing with their existing wardrobe. Without a clear outfit plan, items stay saved indefinitely.',
-    workaround: 'Screenshots sent to WhatsApp groups asking for outfit-pairing advice — takes hours and routinely kills purchase intent while waiting for replies.',
-  },
-  {
-    id: 'social', rank: 4, pct: 13,
-    label: 'In-App Share & Vote',
-    tag: 'Solves Social Validation (13% of friction)',
-    impact: 'Medium',
-    what: 'A native wishlist share card with quick reaction options, keeping the social validation loop inside Myntra with purchase as the immediate next step.',
-    why: 'Users want peer approval before checkout, especially for gifting and festive wear. The decision is suspended pending WhatsApp or Instagram responses that may never come.',
-    workaround: 'Instagram story polls — "should I buy this?" — all happening outside Myntra, creating high exit and non-return risk.',
-  },
-  {
-    id: 'paralysis', rank: 5, pct: 11,
-    label: 'Smart Wishlist Curator',
-    tag: 'Solves Choice Paralysis (11% of friction)',
-    impact: 'Low–Medium',
-    what: 'An AI-ranked shortlist of the top 3 "Best Match" items from the user\'s wishlist, surfaced by occasion, fit confidence, and review consensus.',
-    why: 'Users accumulate 40–60+ undifferentiated saved items with no prioritisation. Cognitive overload leads to total abandonment of the wishlist.',
-    workaround: 'Manual multi-tab browser comparison — most users give up and mass-delete the entire wishlist rather than choose.',
-  },
+  { id: 'fit_sizing_anxiety', label: 'AI TrueFit Body Score', tag: 'Solves Fit & Sizing', impact: 'Critical', what: 'A personalised 1–100 fit confidence score based on the user\'s body measurements and their verified non-return purchase history across similar items.', why: 'Brand size charts are inconsistent across categories — an M in Western wear doesn\'t match an M in Ethnic wear. High-intent users give up rather than risk ordering the wrong size.', workaround: 'Users leave Myntra to search Reddit threads like "Does Anouk run large?" before they can commit to buying.' },
+  { id: 'fabric_quality_ambiguity', label: 'Tactile Confidence Tags', tag: 'Solves Fabric Ambiguity', impact: 'High', what: 'A verified buyer-sourced Sheerness Scale (1–5) and GSM thickness badge shown on every fabric-heavy listing — sourced exclusively from purchase-verified reviewers.', why: 'Studio photography with professional lighting hides fabric sheerness and structural thinness. There is no way for users to assess real material quality from product images.', workaround: 'Users watch YouTube unboxing hauls under natural light before ordering — a multi-hour detour that often kills purchase momentum.' },
+  { id: 'styling_pairing_doubt', label: 'Contextual Outfit Builder', tag: 'Solves Styling Doubt', impact: 'Medium', what: '"Style it with" AI outfit recommendations using real buyer-uploaded community photos — not studio model shoots.', why: 'Users wishlist items they love visually but cannot picture wearing with their existing wardrobe. Without a clear outfit plan, items stay saved indefinitely.', workaround: 'Screenshots sent to WhatsApp groups asking for outfit-pairing advice — takes hours and routinely kills purchase intent while waiting for replies.' },
+  { id: 'social_validation_delay', label: 'In-App Share & Vote', tag: 'Solves Social Validation', impact: 'Medium', what: 'A native wishlist share card with quick reaction options, keeping the social validation loop inside Myntra with purchase as the immediate next step.', why: 'Users want peer approval before checkout, especially for gifting and festive wear. The decision is suspended pending WhatsApp or Instagram responses that may never come.', workaround: 'Instagram story polls — "should I buy this?" — all happening outside Myntra, creating high exit and non-return risk.' },
+  { id: 'choice_paralysis_shortlist', label: 'Smart Wishlist Curator', tag: 'Solves Choice Paralysis', impact: 'Low–Medium', what: 'An AI-ranked shortlist of the top 3 "Best Match" items from the user\'s wishlist, surfaced by occasion, fit confidence, and review consensus.', why: 'Users accumulate 40–60+ undifferentiated saved items with no prioritisation. Cognitive overload leads to total abandonment of the wishlist.', workaround: 'Manual multi-tab browser comparison — most users give up and mass-delete the entire wishlist rather than choose.' }
 ];
 
 const PLATFORM_BADGE = {
@@ -133,6 +85,11 @@ export default function MyntraDiscoveryEngine() {
   const [syncing, setSyncing] = useState(false);
   const [showAllQuotes, setShowAllQuotes] = useState(false);
   const [lastSynced, setLastSynced] = useState(null);
+  const [themes, setThemes] = useState([]);
+  const [quotes, setQuotes] = useState([]);
+  const [loadingQuotes, setLoadingQuotes] = useState(false);
+  const [totalFrictionCount, setTotalFrictionCount] = useState(0);
+  const [noiseCount, setNoiseCount] = useState(0);
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Hello! I am your Myntra AI Discovery Copilot. I have analysed 1,486 user conversations from Play Store, App Store, Reddit, and YouTube. Ask me to explain any friction theme, draft a PRD, or suggest which opportunity to prioritise first.' }
   ]);
@@ -159,11 +116,38 @@ export default function MyntraDiscoveryEngine() {
       const r = await fetch(`/api/insights?t=${Date.now()}`, { cache: 'no-store' });
       const d = await r.json();
       if (d.total_raw_analyzed) setTotalAnalyzed(d.total_raw_analyzed);
-      if (d.insights?.length > 0) setDbInsights(d.insights);
+      if (d.total_friction_count !== undefined) setTotalFrictionCount(d.total_friction_count);
+      if (d.noise_count !== undefined) setNoiseCount(d.noise_count);
+      if (d.insights?.length > 0) {
+        setDbInsights(d.insights);
+        setThemes(d.insights);
+      }
       setLastSynced(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch {}
     setSyncing(false);
   };
+  
+  // Initial load
+  useEffect(() => {
+    sync();
+  }, []);
+
+  const fetchQuotes = async () => {
+    setLoadingQuotes(true);
+    try {
+      const r = await fetch(`/api/verbatims?limit=150`);
+      const d = await r.json();
+      if (d.verbatims) setQuotes(d.verbatims);
+    } catch {}
+    setLoadingQuotes(false);
+  };
+  
+  useEffect(() => {
+    if (showAllQuotes && quotes.length === 0) {
+      fetchQuotes();
+    }
+  }, [showAllQuotes]);
+
 
   const sendMsg = async (force) => {
     const q = force || input;
@@ -185,17 +169,7 @@ export default function MyntraDiscoveryEngine() {
     setGenerating(false);
   };
 
-  // Map live DB insights to our canonical 7 themes to always show all of them
-  const themes = dbInsights.length > 0
-    ? FRICTION_THEMES.map(baseTheme => {
-        const liveMatch = dbInsights.find(t => t.theme === baseTheme.id);
-        return liveMatch
-          ? { ...baseTheme, count: liveMatch.mention_count, pct: Math.round(parseFloat(liveMatch.pct_of_total) || 0) }
-          : baseTheme;
-      }).sort((a, b) => b.count - a.count)
-    : FRICTION_THEMES;
 
-  const noiseCount = totalAnalyzed - 1074;
 
   const TABS = [
     { id: 'discovery', label: 'Discovery & Findings', icon: LayoutDashboard },
@@ -239,7 +213,7 @@ export default function MyntraDiscoveryEngine() {
           <p className="text-[9px] font-black uppercase tracking-widest text-[#94969f] mb-2">Data Sources (1,486)</p>
           {[
             { name: 'Play Store', count: 642 },
-            { name: 'Reddit', count: 412 },
+            { name: 'Reddit', count: {noiseCount.toLocaleString()} },
             { name: 'App Store', count: 318 },
             { name: 'YouTube', count: 114 }
           ].map(s => (
@@ -302,7 +276,7 @@ export default function MyntraDiscoveryEngine() {
               <div className="grid grid-cols-3 gap-4">
                 {[
                   { label: 'User conversations analysed',  val: totalAnalyzed.toLocaleString(), sub: 'From 4 platforms, scraped daily via GitHub Actions', icon: FileText },
-                  { label: 'Friction signals identified',  val: '1,074',                        sub: 'Genuine purchase blockers — tagged by Groq Llama 3.3', icon: AlertTriangle },
+                  { label: 'Friction signals identified',  val: '{totalFrictionCount.toLocaleString()}',                        sub: 'Genuine purchase blockers — tagged by Groq Llama 3.3', icon: AlertTriangle },
                   { label: 'Noise filtered out',           val: noiseCount.toLocaleString(),     sub: 'Off-topic reviews, delivery issues, unrelated positives', icon: CheckCircle2 },
                 ].map((k, i) => (
                   <div key={i} className="bg-white rounded-xl border border-[#e9e9eb] p-4">
@@ -350,7 +324,7 @@ export default function MyntraDiscoveryEngine() {
                 <div className="col-span-3 bg-white border border-[#e9e9eb] rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-[#e9e9eb]">
                     <p className="text-[13px] font-bold text-[#282C3F]">Top Reasons Users Don't Buy From Their Wishlist</p>
-                    <p className="text-[10px] text-[#94969f] mt-0.5">Ranked by mention volume across 1,074 friction signals</p>
+                    <p className="text-[10px] text-[#94969f] mt-0.5">Ranked by mention volume across {totalFrictionCount.toLocaleString()} friction signals</p>
                   </div>
                   <div className="p-5 space-y-4">
                     {themes.map((t, i) => (
@@ -368,7 +342,7 @@ export default function MyntraDiscoveryEngine() {
                             style={{ width: `${t.pct}%`, opacity: 1 - i * 0.12 }}
                           />
                         </div>
-                        <p className="ml-5 text-[9px] text-[#94969f] mt-1">{(t.count || 0).toLocaleString()} of 1,074 friction mentions</p>
+                        <p className="ml-5 text-[9px] text-[#94969f] mt-1">{(t.count || 0).toLocaleString()} of {totalFrictionCount.toLocaleString()} friction mentions</p>
                       </div>
                     ))}
                   </div>
@@ -430,12 +404,14 @@ export default function MyntraDiscoveryEngine() {
                     onClick={() => setShowAllQuotes(!showAllQuotes)}
                     className="text-[10px] font-bold text-[#ff3f6c] bg-[#fff0f3] hover:bg-[#ffe4e9] px-3 py-1.5 rounded-lg transition-colors border border-[#ffcdd7]"
                   >
-                    {showAllQuotes ? 'Collapse view' : 'View all 1,486 verbatims'}
+                    {showAllQuotes ? 'Collapse view' : `View all ${totalFrictionCount.toLocaleString()} verbatims`}
                   </button>
                 </div>
                 <div className={`p-5 transition-all duration-300 ${showAllQuotes ? 'max-h-[500px] overflow-y-auto' : ''}`}>
                   <div className="grid grid-cols-3 gap-3">
-                    {(showAllQuotes ? Array.from({ length: 1486 }, (_, i) => REAL_QUOTES[i % REAL_QUOTES.length]) : REAL_QUOTES.slice(0, 6)).map((q, i) => (
+                    {loadingQuotes ? (
+                      <div className="col-span-3 text-center py-10 text-[11px] text-[#94969f]">Loading live verbatims from Supabase...</div>
+                    ) : (showAllQuotes ? quotes : REAL_QUOTES.slice(0, 6)).map((q, i) => (
                       <div key={i} className="rounded-xl p-3.5 border border-[#e9e9eb] bg-[#fafafa] hover:border-[#ffcdd7] transition-colors flex flex-col">
                         <p className="text-[11px] italic text-[#282C3F] leading-relaxed mb-3">"{q.text}"</p>
                         <div className="flex items-center justify-between mt-auto">
