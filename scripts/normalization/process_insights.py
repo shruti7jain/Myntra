@@ -195,11 +195,15 @@ def classify_text_heuristically(text: str, keyword: str) -> dict:
     # -----------------------------------------------------------------------
     # STEP 1: Check for definite noise/unrelated content FIRST
     # -----------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    # STEP 1: Check for definite noise/unrelated/positive content FIRST
+    # -----------------------------------------------------------------------
     noise_signals = [
         "otp", "crash", "uninstall", "scam", "fraud", "customer care number",
         "useless update", "login issue", "server error", "app is great",
         "best app ever", "love myntra", "amazing app", "fantastic service",
         "delivery was fast", "5 star", "excellent service", "super fast delivery",
+        "great in quality", "great quality", "benefited me", "love this app", "good app",
     ]
     if any(w in t_lower for w in noise_signals):
         theme = "unrelated_other"
@@ -207,13 +211,20 @@ def classify_text_heuristically(text: str, keyword: str) -> dict:
 
     # -----------------------------------------------------------------------
     # STEP 2: Fit & Sizing signals (most specific — check first)
+    # Require explicit fit terms OR return/exchange paired with fit context
     # -----------------------------------------------------------------------
     elif any(w in t_lower or w in kw_lower for w in [
         "true to size", "size up", "size down", "runs small", "runs large",
         "fitting tight", "fitting loose", "shoulder fit", "bust size",
         "size chart", "size guide", "waist size", "size small", "wrong size",
-        "not fit", "size mismatch", "size issue", "returned", "exchange",
-    ]):
+        "not fit for", "not fitting", "does not fit me", "doesn't fit", "size mismatch", "size issue", "too tight", "too loose",
+        "too small", "too large", "tight fit", "loose fit", "small size", "large size",
+    ]) or (
+        any(w in t_lower for w in ["return", "returned", "exchange", "exchanged"])
+        and any(w in t_lower for w in ["size", "fitting", "tight", "loose", "small", "large"])
+        and "fit the standard" not in t_lower
+        and "return guidelines" not in t_lower
+    ):
         theme = "fit_sizing_anxiety"
         is_friction = True
 
@@ -332,28 +343,7 @@ import re
 
 
 def batch_update_raw_feedback(rows_meta):
-    """Fast batch update of theme and classification_method into raw_feedback."""
-    if DATABASE_URL:
-        try:
-            import psycopg2
-            from psycopg2.extras import execute_batch
-            conn = psycopg2.connect(DATABASE_URL, connect_timeout=3)
-            cur = conn.cursor()
-            query = """
-                UPDATE raw_feedback
-                SET theme = %s, classification_method = %s, is_processed = TRUE
-                WHERE id = %s;
-            """
-            data_tuples = [(r["theme"], r["classification_method"], r["id"]) for r in rows_meta]
-            execute_batch(cur, query, data_tuples, page_size=200)
-            conn.commit()
-            cur.close()
-            conn.close()
-            return True
-        except Exception as e:
-            print(f"[WARN] Direct DB batch update error: {e}, using API fallback...")
-
-    # Fallback to Supabase PostgREST batches using fast concurrent threads
+    """Fast batch update of theme and classification_method into raw_feedback via PostgREST."""
     from concurrent.futures import ThreadPoolExecutor
     supabase = get_supabase()
 
@@ -364,10 +354,10 @@ def batch_update_raw_feedback(rows_meta):
                 "classification_method": r["classification_method"],
                 "is_processed": True
             }).eq("id", r["id"]).execute()
-        except Exception as e:
+        except Exception:
             pass
 
-    with ThreadPoolExecutor(max_workers=25) as executor:
+    with ThreadPoolExecutor(max_workers=50) as executor:
         list(executor.map(update_single_row, rows_meta))
 
     return True
