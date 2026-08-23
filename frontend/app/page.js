@@ -213,7 +213,7 @@ export default function MyntraDiscoveryEngine() {
           <p className="text-[9px] font-black uppercase tracking-widest text-[#94969f] mb-2">Data Sources (1,486)</p>
           {[
             { name: 'Play Store', count: 642 },
-            { name: 'Reddit', count: {noiseCount.toLocaleString()} },
+            { name: 'Reddit', count: 412 },
             { name: 'App Store', count: 318 },
             { name: 'YouTube', count: 114 }
           ].map(s => (
