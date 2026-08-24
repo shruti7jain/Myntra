@@ -65,11 +65,12 @@ export default function MyntraDiscoveryEngine() {
   const [tab, setTab] = useState('discovery');
   const [expandedOpp, setExpandedOpp] = useState(null);
   const [dbInsights, setDbInsights] = useState([]);
-  const [totalAnalyzed, setTotalAnalyzed] = useState(1486);
+  const [totalAnalyzed, setTotalAnalyzed] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [showAllQuotes, setShowAllQuotes] = useState(false);
   const [lastSynced, setLastSynced] = useState(null);
   const [themes, setThemes] = useState([]);
+  const [intents, setIntents] = useState([]);
   const [platforms, setPlatforms] = useState([
     { name: 'Play Store', count: 0 },
     { name: 'Reddit', count: 0 },
@@ -81,7 +82,7 @@ export default function MyntraDiscoveryEngine() {
   const [totalFrictionCount, setTotalFrictionCount] = useState(0);
   const [noiseCount, setNoiseCount] = useState(0);
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hello! I am your Myntra AI Discovery Copilot. I have analysed 1,486 user conversations from Play Store, App Store, Reddit, and YouTube. Ask me to explain any friction theme, draft a PRD, or suggest which opportunity to prioritise first.' }
+    { role: 'assistant', content: 'Hello! I am your Myntra AI Discovery Copilot. I have analysed live user conversations across Play Store, App Store, Reddit, and YouTube. Ask me to explain any friction theme, draft a PRD, or suggest which opportunity to prioritise first.' }
   ]);
   const [input, setInput] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -96,6 +97,7 @@ export default function MyntraDiscoveryEngine() {
         const d = await r.json();
         if (d.total_raw_analyzed) setTotalAnalyzed(d.total_raw_analyzed);
         if (d.insights?.length > 0) setDbInsights(d.insights);
+        if (d.intents?.length > 0) setIntents(d.intents);
       } catch {}
     })();
   }, []);
@@ -109,6 +111,7 @@ export default function MyntraDiscoveryEngine() {
       if (d.total_friction_count !== undefined) setTotalFrictionCount(d.total_friction_count);
       if (d.noise_count !== undefined) setNoiseCount(d.noise_count);
       if (d.platforms?.length > 0) setPlatforms(d.platforms);
+      if (d.intents?.length > 0) setIntents(d.intents);
       if (d.insights?.length > 0) {
         setDbInsights(d.insights);
         setThemes(d.insights);
@@ -237,8 +240,8 @@ export default function MyntraDiscoveryEngine() {
               {tab === 'copilot'   && 'AI PM Copilot'}
             </h1>
             <p className="text-[10px] text-[#94969f] mt-0.5">
-              {tab === 'discovery' && `${totalAnalyzed.toLocaleString()} public user conversations · Play Store · App Store · Reddit · YouTube`}
-              {tab === 'copilot'   && 'Grounded in 1,486 VoC verbatims · Groq Llama 3.3 · No hardcoded responses'}
+              {tab === 'discovery' && `${totalAnalyzed ? totalAnalyzed.toLocaleString() : '...'} public user conversations · Play Store · App Store · Reddit · YouTube`}
+              {tab === 'copilot'   && `Grounded in ${totalAnalyzed ? totalAnalyzed.toLocaleString() : '...'} VoC verbatims · Groq Llama 3.3 · Live database`}
             </p>
           </div>
           <span className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-[#fff0f3] text-[#ff3f6c] border border-[#ffcdd7] flex items-center gap-1.5 flex-shrink-0">
@@ -339,12 +342,12 @@ export default function MyntraDiscoveryEngine() {
                     <div className="space-y-4">
                       {themes.slice(0, 3).map((t, i) => {
                         const descriptions = {
-                          fit_sizing_anxiety: 'Users love the item but won\'t risk ordering the wrong size. Inconsistent brand charts push them off-platform to Reddit before they can commit.',
-                          fabric_quality_ambiguity: 'Studio photography hides sheerness and material thinness. Users seek YouTube unboxings to see fabric in real, unedited light before ordering.',
+                          fit_sizing_anxiety: 'Users love the item but hesitate to risk ordering the wrong size. Inconsistent brand size charts create high sizing doubt and return anxiety.',
+                          fabric_quality_ambiguity: 'Studio photography hides sheerness and material thinness. Users experience tactile uncertainty before committing to buy.',
                           styling_pairing_doubt: 'Users wishlist items they like visually but cannot picture wearing with their existing wardrobe. Without a clear outfit plan, items stay saved indefinitely.',
-                          visual_reality_discrepancy: 'The item looks perfect in studio lighting but users fear it will look different in reality. They seek out real customer photos to verify.',
-                          occasion_timing_delay: 'Users save the item for a future event or occasion, but delay the purchase until the date is closer, risking out-of-stock.',
-                          choice_paralysis_shortlist: 'Users accumulate dozens of similar items and cannot decide which one is best, leading to complete cart abandonment.',
+                          visual_reality_discrepancy: 'The item looks perfect in studio lighting but users fear it will look different in reality. Real customer photos help verify finish and color.',
+                          occasion_timing_delay: 'Users save items for future events, but delay purchases until closer to the date, risking out-of-stock.',
+                          choice_paralysis_shortlist: 'Users accumulate dozens of similar items and cannot decide which one is best, leading to complete wishlist abandonment.',
                           social_validation_delay: 'Users wait for friends or family to approve the item before checking out, often losing purchase momentum.'
                         };
                         return (
@@ -362,23 +365,23 @@ export default function MyntraDiscoveryEngine() {
 
                   <div className="bg-white border border-[#e9e9eb] rounded-xl p-4">
                     <p className="text-[11px] font-black text-[#94969f] uppercase tracking-wider mb-3">Not every wishlist save = purchase intent</p>
-                    <p className="text-[9px] text-[#94969f] mb-2 -mt-1 italic">AI-estimated from VoC signal classification</p>
+                    <p className="text-[9px] text-[#94969f] mb-2 -mt-1 italic">AI-estimated from {totalFrictionCount ? totalFrictionCount.toLocaleString() : 'live'} classified wishlist signals</p>
                     <div className="space-y-2">
-                      {[
-                        { label: 'High intent, blocked by uncertainty', pct: '38%' },
-                        { label: 'Comparing options before deciding',   pct: '24%' },
-                        { label: 'Waiting for an occasion or event',    pct: '18%' },
-                        { label: 'Monitoring for a price drop',         pct: '12%' },
-                        { label: 'Bookmarking / inspiration only',      pct: '8%'  },
-                      ].map((r, i) => (
-                        <div key={i} className="flex items-center justify-between text-[10px]">
-                          <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#ff3f6c]" style={{ opacity: 1 - i * 0.15 }} />
-                            <span className="text-[#535766]">{r.label}</span>
+                      {intents && intents.length > 0 ? (
+                        intents.map((r, i) => (
+                          <div key={i} className="flex items-center justify-between text-[10px]">
+                            <div className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#ff3f6c]" style={{ opacity: Math.max(0.2, 1 - i * 0.15) }} />
+                              <span className="text-[#535766]">{r.label}</span>
+                            </div>
+                            <span className="font-black text-[#ff3f6c]">
+                              {r.has_evidence ? `${r.pct}%` : '0% (0 records)'}
+                            </span>
                           </div>
-                          <span className="font-black text-[#ff3f6c]">{r.pct}</span>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <p className="text-[10px] text-[#94969f]">Loading intent breakdown...</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -395,7 +398,7 @@ export default function MyntraDiscoveryEngine() {
                     onClick={() => setShowAllQuotes(!showAllQuotes)}
                     className="text-[10px] font-bold text-[#ff3f6c] bg-[#fff0f3] hover:bg-[#ffe4e9] px-3 py-1.5 rounded-lg transition-colors border border-[#ffcdd7]"
                   >
-                    {showAllQuotes ? 'Collapse view' : 'Shows all cleaned Quotas'}
+                    {showAllQuotes ? 'Collapse view' : 'Show all cleaned Quotes'}
                   </button>
                 </div>
                 <div className={`p-5 transition-all duration-300 ${showAllQuotes ? 'max-h-[500px] overflow-y-auto' : ''}`}>
@@ -415,7 +418,7 @@ export default function MyntraDiscoveryEngine() {
                 </div>
                 <div className="px-5 py-3 border-t border-[#e9e9eb]">
                   <p className="text-[10px] text-[#94969f]">
-                    ⚠️ All findings are AI-inferred from public data — to be validated through 5–6 primary user interviews before any solution is built.
+                    ⚠️ Source mix is uneven (96% Play Store); findings reflect the available public conversation corpus and should be validated through primary user research.
                   </p>
                 </div>
               </div>
@@ -428,7 +431,8 @@ export default function MyntraDiscoveryEngine() {
                 </div>
                 <div className="divide-y divide-[#e9e9eb]">
                   {OPPORTUNITIES.map((opp, i) => {
-                    const themeData = themes.find(t => t.theme === opp.theme || t.id === opp.id) || { pct: 0 };
+                    const themeData = themes.find(t => t.theme === opp.theme || t.id === opp.id) || { pct: 0, count: 0 };
+                    const hasEvidence = (themeData.count || 0) > 0 || (themeData.mention_count || 0) > 0;
                     return (
                     <div key={opp.id} className="p-5 hover:bg-[#fafafa] transition-colors flex gap-5">
                       <div className="w-8 h-8 rounded-full bg-[#282C3F] text-white flex-shrink-0 flex items-center justify-center font-black text-[12px]">
@@ -437,8 +441,8 @@ export default function MyntraDiscoveryEngine() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="text-[12px] font-bold text-[#282C3F]">{opp.label}</h3>
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#fff0f3] text-[#ff3f6c]">
-                            {opp.tag} ({themeData.pct}% of friction)
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${hasEvidence ? 'bg-[#fff0f3] text-[#ff3f6c]' : 'bg-[#f5f5f6] text-[#94969f]'}`}>
+                            {hasEvidence ? `${opp.tag} (${themeData.pct}% of friction)` : `${opp.tag} (Exploratory · 0% data evidence)`}
                           </span>
                           <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#f5f5f6] text-[#535766]">
                             Impact: {opp.impact}
@@ -474,7 +478,7 @@ export default function MyntraDiscoveryEngine() {
                   <Bot className="w-4 h-4 text-[#ff3f6c]" />
                   <div>
                     <p className="text-[12px] font-bold text-[#282C3F]">Myntra AI Discovery Copilot</p>
-                    <p className="text-[9px] text-[#94969f]">Groq Llama 3.3 · Grounded in 1,486 verbatims · No hardcoded answers</p>
+                    <p className="text-[9px] text-[#94969f]">Groq Llama 3.3 · Grounded in {totalAnalyzed ? totalAnalyzed.toLocaleString() : 'live'} verbatims · Live database</p>
                   </div>
                 </div>
 

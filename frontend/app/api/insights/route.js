@@ -2,38 +2,20 @@ import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   try {
-    // Fetch all processed raw feedback for theme analysis (with pagination to bypass 1000-row limit)
-    let rawData = [];
-    let offset = 0;
-    while (true) {
-      const { data, error } = await supabase
-        .from('raw_feedback')
-        .select('theme, platform, rating')
-        .eq('is_processed', true)
-        .range(offset, offset + 999);
-      
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-      
-      if (data) {
-        rawData = rawData.concat(data);
-        if (data.length < 1000) break;
-        offset += 1000;
-      } else {
-        break;
-      }
+    // 1. Fetch aggregated themes, percentages, and intent breakdowns from insights table
+    const { data: insightsData, error: insightsErr } = await supabase
+      .from('insights')
+      .select('*');
+
+    if (insightsErr) {
+      return NextResponse.json({ error: insightsErr.message }, { status: 500 });
     }
 
-    // Get total count of ALL records (for the "1,486 analysed" KPI)
-    const { count: rawCount, error: countErr } = await supabase
-      .from('raw_feedback')
-      .select('*', { count: 'exact', head: true });
-
-    // Count per platform using exact counts (bypasses Supabase 1000-row limit)
+    // 2. Exact platform counts
     const platformNames = ['playstore', 'appstore', 'reddit', 'youtube'];
     const PLATFORM_DISPLAY = {
       'playstore': 'Play Store',
@@ -41,9 +23,10 @@ export async function GET() {
       'reddit': 'Reddit',
       'youtube': 'YouTube'
     };
+
     const platformCountResults = await Promise.all(
       platformNames.map(async (plat) => {
-        const { count, error: platErr } = await supabase
+        const { count } = await supabase
           .from('raw_feedback')
           .select('*', { count: 'exact', head: true })
           .eq('platform', plat);
@@ -51,7 +34,10 @@ export async function GET() {
       })
     );
 
-    // Map to canonical labels
+    const platforms = platformCountResults.sort((a, b) => b.count - a.count);
+    const totalRawAnalyzed = platformCountResults.reduce((sum, p) => sum + p.count, 0);
+
+    // 3. Compute friction vs noise from canonical insights data
     const CANONICAL_LABELS = {
       "fabric_quality_ambiguity": "Fabric Quality & Tactile Ambiguity",
       "visual_reality_discrepancy": "Product Photo vs. Reality Mismatch",
@@ -62,63 +48,78 @@ export async function GET() {
       "social_validation_delay": "Social Validation & Peer Opinion Delay",
     };
 
-    // Compute live metrics
-    let total_friction_count = 0;
-    let noise_count = 0;
-    const themeCounts = Object.keys(CANONICAL_LABELS).reduce((acc, key) => {
-      acc[key] = 0;
-      return acc;
-    }, {});
-    const platformCounts = {};
+    let totalFrictionCount = 0;
+    let noiseCount = 0;
+    const aggregatedIntents = {
+      high_intent_blocked: 0,
+      occasion_waiting: 0,
+      price_monitoring: 0,
+      bookmarking_inspiration: 0,
+      comparison_shortlisting: 0,
+    };
 
-    // Use the per-platform count results
-    platformCountResults.forEach(p => {
-      platformCounts[p.name] = p.count;
+    const insights = [];
+
+    (insightsData || []).forEach((row) => {
+      const themeKey = row.theme;
+      if (themeKey === 'unrelated_other') {
+        noiseCount = row.mention_count || 0;
+      } else if (CANONICAL_LABELS[themeKey]) {
+        totalFrictionCount += row.mention_count || 0;
+        insights.push({
+          id: themeKey,
+          theme: themeKey,
+          theme_label: row.theme_label || CANONICAL_LABELS[themeKey],
+          label: row.theme_label || CANONICAL_LABELS[themeKey],
+          mention_count: row.mention_count || 0,
+          count: row.mention_count || 0,
+          pct: row.pct_of_total ? Math.round(row.pct_of_total) : 0,
+          pct_exact: row.pct_of_total || 0,
+        });
+      }
+
+      // Aggregate intent breakdown
+      const ib = row.intent_breakdown || {};
+      Object.keys(aggregatedIntents).forEach((key) => {
+        aggregatedIntents[key] += ib[key] || 0;
+      });
     });
 
-    // Theme analysis from processed records only
-    rawData.forEach(row => {
-      if (!row.theme) {
-        noise_count++;
-        return;
-      }
-      if (row.theme === 'unrelated_other' || row.rating >= 4) {
-        noise_count++;
-      } else {
-        total_friction_count++;
-        themeCounts[row.theme] = (themeCounts[row.theme] || 0) + 1;
-      }
-    });
+    // Sort insights by mention_count descending
+    insights.sort((a, b) => b.mention_count - a.mention_count);
 
-    // Noise = total analysed - friction signals identified
-    const totalAnalyzed = rawCount || 1486;
-    noise_count = totalAnalyzed - total_friction_count;
+    // Reconcile total friction vs noise
+    if (noiseCount === 0 && totalRawAnalyzed > 0) {
+      noiseCount = totalRawAnalyzed - totalFrictionCount;
+    }
 
+    // 4. Intent breakdown
+    const totalNonNoiseIntent = Object.values(aggregatedIntents).reduce((sum, v) => sum + v, 0);
+    const INTENT_DISPLAY = [
+      { id: 'high_intent_blocked', label: 'High intent, blocked by uncertainty', count: aggregatedIntents.high_intent_blocked },
+      { id: 'occasion_waiting', label: 'Waiting for an occasion or event', count: aggregatedIntents.occasion_waiting },
+      { id: 'price_monitoring', label: 'Monitoring for a price drop', count: aggregatedIntents.price_monitoring },
+      { id: 'bookmarking_inspiration', label: 'Bookmarking / inspiration only', count: aggregatedIntents.bookmarking_inspiration },
+      { id: 'comparison_shortlisting', label: 'Comparing options before deciding', count: aggregatedIntents.comparison_shortlisting },
+    ];
 
-
-    const insights = Object.entries(themeCounts).map(([themeId, count]) => ({
-      id: themeId,
-      theme: themeId,
-      theme_label: CANONICAL_LABELS[themeId] || themeId,
-      label: CANONICAL_LABELS[themeId] || themeId,
-      mention_count: count,
-      count: count, // add count alias for ui mapping
-      pct: total_friction_count > 0 ? Math.round((count / total_friction_count) * 100) : 0
-    })).sort((a, b) => b.mention_count - a.mention_count);
-
-    const platforms = Object.entries(platformCounts).map(([name, count]) => ({
-      name,
-      count
-    })).sort((a, b) => b.count - a.count);
+    const intents = INTENT_DISPLAY.map((item) => ({
+      ...item,
+      pct: totalNonNoiseIntent > 0 ? Math.round((item.count / totalNonNoiseIntent) * 100) : 0,
+      pct_formatted: totalNonNoiseIntent > 0 ? `${Math.round((item.count / totalNonNoiseIntent) * 100)}%` : '0%',
+      has_evidence: item.count > 0,
+    }));
 
     return NextResponse.json({
       insights,
       platforms,
-      total_raw_analyzed: totalAnalyzed,
-      total_friction_count,
-      noise_count,
+      intents,
+      total_raw_analyzed: totalRawAnalyzed,
+      total_friction_count: totalFrictionCount,
+      noise_count: noiseCount,
       updated_at: new Date().toISOString()
     });
+
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
