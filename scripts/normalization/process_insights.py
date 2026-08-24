@@ -58,129 +58,99 @@ def get_groq_client():
     if not GROQ_API_KEY or not GROQ_API_KEY.startswith("gsk_") or len(GROQ_API_KEY) < 20:
         return None
     return Groq(api_key=GROQ_API_KEY)
-
-
-def classify_text_with_llm(groq_client, text: str, keyword: str) -> dict:
+def classify_batch_with_llm(groq_client, batch_items: list[dict]) -> dict:
     """
-    LLM-powered Voice of Customer classification using Groq Llama-3.3-70B.
-    Classifies into canonical friction themes with intent type detection.
-    Uses strict JSON schema output with retry logic.
+    LLM-powered Voice of Customer classification using Groq openai/gpt-oss-20b batching.
+    Batches multiple items per prompt to fit under 30 RPM limits.
     """
     if not groq_client:
         raise ValueError("Groq client not initialized or missing API key")
 
-    themes_prompt_list = "\n".join([f"- '{k}': {v}" for k, v in CANONICAL_THEMES.items()])
-    intent_prompt_list = "\n".join([f"- '{k}': {v}" for k, v in INTENT_TYPES.items()])
+    system_prompt = """You are an expert E-Commerce VoC Intelligence Classifier for Myntra fashion.
+Classify each customer review in the input JSON array into structured friction signals.
 
-    system_prompt = f"""You are an expert E-Commerce Product Discovery & VoC Intelligence Classifier for Myntra fashion.
-Analyze the customer review/comment and extract structured signals about purchase hesitation and wishlist behavior.
+FRICTION THEMES:
+- 'fabric_quality_ambiguity': thin material, see-through, cheap fabric, poor quality cloth
+- 'visual_reality_discrepancy': color different from picture, looks different from app photo
+- 'fit_sizing_anxiety': wrong size, tight, loose, size small, not fit for me, size chart issue, size exchange
+- 'occasion_timing_delay': delivery delay before event, need it for wedding/party
+- 'styling_pairing_doubt': how to style, what to pair with
+- 'choice_paralysis_shortlist': can't decide between wishlist items
+- 'social_validation_delay': asking friend for opinion
+- 'unrelated_other': refund status, general delivery complaint, app crash, customer service issue, positive review
 
-FRICTION THEMES (pick exactly ONE):
-{themes_prompt_list}
-
-INTENT TYPES (pick exactly ONE — what was the user's relationship with this product?):
-{intent_prompt_list}
-
-RULES:
-1. Choose exactly one theme key. If unrelated to fashion/shopping/purchase decisions, choose 'unrelated_other'.
-2. If multiple friction reasons exist, identify the DOMINANT barrier causing hesitation.
-3. Extract the EXACT verbatim sentence (max 200 chars). ONLY copy words that appear in the original text — do NOT paraphrase or fabricate.
-4. Identify fashion category: 'Ethnic Wear', 'Western Wear', 'Dresses', 'Footwear', or 'General Fashion'.
-5. Set 'is_relevant_friction': true for the 7 core friction themes, false for 'unrelated_other'.
-6. Respond ONLY with valid JSON matching this exact schema — no markdown, no explanation:
-{{
-  "is_relevant_friction": true,
-  "theme": "theme_key",
-  "theme_label": "Theme Label",
-  "clearest_quote": "exact verbatim sentence from the text",
-  "category": "Category Name",
-  "intent_type": "intent_key"
-}}
-
-FEW-SHOT EXAMPLES:
-
-Input: "The design of this kurti is gorgeous but the material is completely see-through and thin, plus chest was a bit loose."
-Output: {{"is_relevant_friction": true, "theme": "fabric_quality_ambiguity", "theme_label": "Fabric Quality & Tactile Ambiguity", "clearest_quote": "the material is completely see-through and thin", "category": "Ethnic Wear", "intent_type": "high_intent_blocked"}}
-
-Input: "App picture showed vibrant emerald green but the actual dress delivered was dull olive and very disappointing."
-Output: {{"is_relevant_friction": true, "theme": "visual_reality_discrepancy", "theme_label": "Product Photo vs. Reality Mismatch", "clearest_quote": "App picture showed vibrant emerald green but the actual dress delivered was dull olive", "category": "Dresses", "intent_type": "high_intent_blocked"}}
-
-Input: "Saved 3 kurtas to wishlist, can't decide which one to actually buy — they all look similar."
-Output: {{"is_relevant_friction": true, "theme": "choice_paralysis_shortlist", "theme_label": "Choice Overload & Comparison Fatigue", "clearest_quote": "can't decide which one to actually buy — they all look similar", "category": "Ethnic Wear", "intent_type": "comparison_shortlisting"}}
-
-Input: "Have this saree saved since Diwali but will actually buy it for my cousin's wedding next month."
-Output: {{"is_relevant_friction": true, "theme": "occasion_timing_delay", "theme_label": "Occasion Timing & Postponement", "clearest_quote": "will actually buy it for my cousin's wedding next month", "category": "Ethnic Wear", "intent_type": "occasion_waiting"}}
-
-Input: "OTP not received during login on Android 14."
-Output: {{"is_relevant_friction": false, "theme": "unrelated_other", "theme_label": "Unrelated / Noise", "clearest_quote": "OTP not received during login on Android 14", "category": "General Fashion", "intent_type": "noise"}}
-
-Input: "Best Shopping App Ever! Absolutely love Myntra! Delivery is fast and returns are hassle-free."
-Output: {{"is_relevant_friction": false, "theme": "unrelated_other", "theme_label": "Unrelated / Noise", "clearest_quote": "Best Shopping App Ever! Absolutely love Myntra!", "category": "General Fashion", "intent_type": "noise"}}
+OUTPUT SCHEMA:
+Respond ONLY with a raw JSON array of objects. Strict double quotes. No text before or after.
+[{"id": <id>, "is_relevant_friction": true|false, "theme": "theme_key", "clearest_quote": "exact verbatim sentence max 150 chars", "category": "Western Wear|Ethnic Wear|Dresses|Footwear|General Fashion", "intent_type": "high_intent_blocked|comparison_shortlisting|price_monitoring|bookmarking_inspiration|occasion_waiting|noise"}]
 """
 
-    user_content = f"Keyword matched: {keyword or 'None'}\nReview text: {text[:900]}"
+    input_payload = [{"id": r["id"], "text": (r.get("text") or "")[:300]} for r in batch_items]
+    user_content = json.dumps(input_payload, ensure_ascii=False)
 
-    last_err = None
     for attempt in range(3):
         try:
             completion = groq_client.chat.completions.create(
-                model=MODEL_NAME,
+                model="openai/gpt-oss-20b",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_content}
                 ],
                 temperature=0.05,
-                max_tokens=350,
+                max_tokens=3500,
             )
             raw_response = completion.choices[0].message.content.strip()
-            # Try to parse JSON from output
-            import re
-            match = re.search(r'\{.*\}', raw_response, re.DOTALL)
-            if match:
-                parsed = json.loads(match.group())
+            clean_text = re.sub(r'<think>.*?</think>', '', raw_response, flags=re.DOTALL)
+            if '<think>' in clean_text:
+                clean_text = re.sub(r'<think>.*', '', clean_text, flags=re.DOTALL)
+
+            if '[' not in clean_text and '[' in raw_response:
+                clean_text = raw_response
+
+            start_idx = clean_text.find('[')
+            end_idx = clean_text.rfind(']')
+
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                candidate = clean_text[start_idx:end_idx+1]
+                candidate = re.sub(r',\s*([\]}])', r'\1', candidate)
+                try:
+                    parsed = json.loads(candidate)
+                except Exception:
+                    candidate_fixed = re.sub(r'([{,]\s*)([a-zA-Z0-9_]+)\s*:', r'\1"\2":', candidate)
+                    parsed = json.loads(candidate_fixed)
             else:
-                parsed = json.loads(raw_response)
+                raise ValueError("No JSON array brackets found in model output")
 
-            # Validate theme key — default to unrelated_other if invalid
-            theme_key = parsed.get("theme", "unrelated_other")
-            if theme_key not in CANONICAL_THEMES:
-                theme_key = "unrelated_other"
+            results_by_id = {}
+            for res in parsed:
+                item_id = res.get("id")
+                theme_key = res.get("theme", "unrelated_other")
+                if theme_key not in CANONICAL_THEMES:
+                    theme_key = "unrelated_other"
+                intent_key = res.get("intent_type", "no_clear_intent")
+                if intent_key not in INTENT_TYPES:
+                    intent_key = "no_clear_intent"
 
-            # Validate intent_type
-            intent_key = parsed.get("intent_type", "no_clear_intent")
-            if intent_key not in INTENT_TYPES:
-                intent_key = "no_clear_intent"
+                quote = res.get("clearest_quote") or res.get("quote") or ""
 
-            # ---------------------------------------------------------------
-            # QUOTE FABRICATION CHECK (Edge Case LLM-OUT-03)
-            # Verify the extracted quote actually appears in the original text.
-            # If not, fall back to a safe truncation of the real text.
-            # ---------------------------------------------------------------
-            extracted_quote = parsed.get("clearest_quote", "") or ""
-            if extracted_quote and extracted_quote.lower() not in text.lower():
-                # LLM may have slightly reformatted — try a loose substring check
-                # using first 30 chars of the quote
-                quote_start = extracted_quote[:30].lower().strip()
-                if quote_start and quote_start not in text.lower():
-                    # Quote is fabricated — use safe fallback
-                    extracted_quote = text[:200].strip()
-
-            return {
-                "is_relevant_friction": theme_key != "unrelated_other",
-                "theme": theme_key,
-                "theme_label": CANONICAL_THEMES.get(theme_key, "Friction Barrier"),
-                "clearest_quote": extracted_quote or text[:200],
-                "category": parsed.get("category", "General Fashion"),
-                "intent_type": intent_key,
-            }
+                results_by_id[item_id] = {
+                    "is_relevant_friction": theme_key != "unrelated_other",
+                    "theme": theme_key,
+                    "theme_label": CANONICAL_THEMES.get(theme_key, "Friction Barrier"),
+                    "clearest_quote": quote[:200],
+                    "category": res.get("category", "General Fashion"),
+                    "intent_type": intent_key,
+                }
+            return results_by_id
 
         except Exception as e:
-            last_err = e
+            print(f"[LLM ERROR] Attempt {attempt+1} failed: {type(e).__name__}: {e}", flush=True)
             err_str = str(e).lower()
-            if "rate limit" in err_str or "429" in err_str:
-                raise e  # Fail fast to fallback heuristic immediately
+            if "429" in err_str or "rate limit" in err_str:
+                time.sleep(3.0 * (attempt + 1))
+            else:
+                time.sleep(1.0 * (attempt + 1))
 
-    raise last_err or RuntimeError("LLM classification failed after 3 retries")
+    raise RuntimeError("Batch LLM classification failed after 3 attempts")
 
 
 def classify_text_heuristically(text: str, keyword: str) -> dict:
@@ -422,57 +392,71 @@ def run_normalization():
     updated_rows_meta = []
     print("\n[CLASSIFICATION] Processing VoC records (Primary: Groq Llama 3.3 | Fallback: NLP Heuristics)...")
 
-    groq_disabled_globally = False  # Enable Groq Llama 3.3 classification
+    BATCH_SIZE = 12
+    total_batches = (total_records + BATCH_SIZE - 1) // BATCH_SIZE
+    print(f"\n[CLASSIFICATION] Processing {total_batches} batches ({total_records} VoC records) via Groq LLM (openai/gpt-oss-20b)...")
 
-    for idx, item in enumerate(all_records, start=1):
-        item_id = item["id"]
-        text = item.get("text", "")
-        kw = item.get("keyword_matched", "")
-        platform = item.get("platform", "unknown")
-        url = item.get("url", "")
+    for b_idx in range(total_batches):
+        b_start = b_idx * BATCH_SIZE
+        batch = all_records[b_start:b_start + BATCH_SIZE]
+        llm_batch_results = None
 
-        method_used = "heuristic_fallback"
-        result = None
+        if groq_client:
+            try:
+                llm_batch_results = classify_batch_with_llm(groq_client, batch)
+            except Exception as e:
+                classification_stats["reasons"]["error"] += 1
 
-        # Use high-accuracy NLP classification with Groq LLM verification on sample rows
-        result = classify_text_heuristically(text, kw)
-        method_used = "heuristic_fallback"
-        classification_stats["heuristic_fallback"] += 1
+        for item in batch:
+            item_id = item["id"]
+            text = item.get("text", "")
+            kw = item.get("keyword_matched", "")
+            platform = item.get("platform", "unknown")
+            url = item.get("url", "")
 
-        target_theme = result["theme"]
-        cat = result["category"]
-        quote = result["clearest_quote"]
-        intent = result["intent_type"]
+            if llm_batch_results and item_id in llm_batch_results:
+                result = llm_batch_results[item_id]
+                method_used = "llm"
+                classification_stats["llm"] += 1
+            else:
+                result = classify_text_heuristically(text, kw)
+                method_used = "heuristic_fallback"
+                classification_stats["heuristic_fallback"] += 1
 
-        theme_data[target_theme]["mention_count"] += 1
+            target_theme = result["theme"]
+            cat = result["category"]
+            quote = result["clearest_quote"]
+            intent = result["intent_type"]
 
-        if cat in theme_data[target_theme]["segment_breakdown"]:
-            theme_data[target_theme]["segment_breakdown"][cat] += 1
+            theme_data[target_theme]["mention_count"] += 1
 
-        if intent in theme_data[target_theme]["intent_breakdown"]:
-            theme_data[target_theme]["intent_breakdown"][intent] += 1
+            if cat in theme_data[target_theme]["segment_breakdown"]:
+                theme_data[target_theme]["segment_breakdown"][cat] += 1
 
-        # Store up to 5 sample quotes with full source attribution
-        existing_quotes = theme_data[target_theme]["sample_quotes"]
-        if len(existing_quotes) < 5 and len(quote) > 25:
-            quote_entry = {
-                "text": quote,
-                "platform": platform,
-                "url": url or ""
-            }
-            # Avoid duplicate quote texts
-            if not any(q.get("text", "") == quote for q in existing_quotes):
-                existing_quotes.append(quote_entry)
+            if intent in theme_data[target_theme]["intent_breakdown"]:
+                theme_data[target_theme]["intent_breakdown"][intent] += 1
 
-        updated_rows_meta.append({
-            "id": item_id,
-            "theme": target_theme,
-            "classification_method": method_used,
-            "is_processed": True
-        })
+            # Store up to 5 sample quotes with full source attribution
+            existing_quotes = theme_data[target_theme]["sample_quotes"]
+            if len(existing_quotes) < 5 and len(quote) > 25:
+                quote_entry = {
+                    "text": quote,
+                    "platform": platform,
+                    "url": url or ""
+                }
+                if not any(q.get("text", "") == quote for q in existing_quotes):
+                    existing_quotes.append(quote_entry)
 
-        if idx % 50 == 0 or idx == total_records:
-            print(f"  -> Processed {idx}/{total_records} records... (LLM: {classification_stats['llm']}, Heuristic: {classification_stats['heuristic_fallback']})", flush=True)
+            updated_rows_meta.append({
+                "id": item_id,
+                "theme": target_theme,
+                "classification_method": method_used,
+                "is_processed": True
+            })
+
+        processed_count = min((b_idx + 1) * BATCH_SIZE, total_records)
+        print(f"  -> Batch {b_idx + 1}/{total_batches} done ({processed_count}/{total_records} records)... (LLM: {classification_stats['llm']}, Heuristic: {classification_stats['heuristic_fallback']})", flush=True)
+        time.sleep(8.0)
 
     # 4. Batch update raw_feedback
     print(f"\n[SUPABASE] Persisting classification results to `raw_feedback`...")
