@@ -50,12 +50,11 @@ chat_res = requests.post('http://localhost:3000/api/chat', json={'message': 'Exe
 chat_data = chat_res.json()
 chat_reply = chat_data.get('reply', '')
 
-# Extract numbers mentioned in copilot reply
-copilot_has_1506 = '1,506' in chat_reply or '1506' in chat_reply
-copilot_has_193_fit = '193' in chat_reply
-copilot_has_38_fabric = '38' in chat_reply
-copilot_has_29_photo = '29' in chat_reply
-copilot_has_23_occasion = '23' in chat_reply
+copilot_mentions_total = str(db_total_records) in chat_reply
+copilot_mentions_fit = str(db_themes.get('fit_sizing_anxiety', 0)) in chat_reply
+copilot_mentions_fabric = str(db_themes.get('fabric_quality_ambiguity', 0)) in chat_reply
+copilot_mentions_photo = str(db_themes.get('visual_reality_discrepancy', 0)) in chat_reply
+copilot_mentions_occasion = str(db_themes.get('occasion_timing_delay', 0)) in chat_reply
 
 print(f"DATABASE:")
 print(f"  Total: {db_total_records}")
@@ -78,11 +77,11 @@ print(f"  Photo: {api_themes.get('visual_reality_discrepancy')} ({api_theme_pcts
 print(f"  Occasion: {api_themes.get('occasion_timing_delay')} ({api_theme_pcts.get('occasion_timing_delay')}%)")
 
 print(f"\nCOPILOT GROUNDING:")
-print(f"  Mentions 1,506 records: {copilot_has_1506}")
-print(f"  Mentions 193 Fit & Sizing: {copilot_has_193_fit}")
-print(f"  Mentions 38 Fabric Quality: {copilot_has_38_fabric}")
-print(f"  Mentions 29 Photo Mismatch: {copilot_has_29_photo}")
-print(f"  Mentions 23 Occasion Timing: {copilot_has_23_occasion}")
+print(f"  Mentions database total: {copilot_mentions_total}")
+print(f"  Mentions fit count: {copilot_mentions_fit}")
+print(f"  Mentions fabric count: {copilot_mentions_fabric}")
+print(f"  Mentions photo count: {copilot_mentions_photo}")
+print(f"  Mentions occasion count: {copilot_mentions_occasion}")
 
 print("\n" + "=" * 70)
 print("VALIDATION CHECKS (A through G):")
@@ -106,7 +105,7 @@ print(f"E. theme percentages ~ 100%: {'PASS' if 98 <= theme_pct_sum <= 101 else 
 intent_pct_sum = sum(api_intent_pcts.values())
 print(f"F. intent percentages ~ 100%: {'PASS' if 98 <= intent_pct_sum <= 101 else 'FAIL'} (Sum = {intent_pct_sum}%)")
 
-c_g = (db_total_records == api_total_records == 1506 and copilot_has_1506)
-print(f"G. Dashboard total = Copilot total = Database total: {'PASS' if c_g else 'FAIL'} (1,506 == 1,506 == 1,506)")
+c_g = (db_total_records == api_total_records and copilot_mentions_total)
+print(f"G. Dashboard total = Copilot total = Database total: {'PASS' if c_g else 'FAIL'} ({db_total_records} == {api_total_records})")
 
 print("=" * 70)

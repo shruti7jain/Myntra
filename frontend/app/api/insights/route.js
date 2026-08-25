@@ -6,7 +6,6 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    // 1. Fetch aggregated themes, percentages, and intent breakdowns from insights table
     const { data: insightsData, error: insightsErr } = await supabase
       .from('insights')
       .select('*');
@@ -15,13 +14,12 @@ export async function GET() {
       return NextResponse.json({ error: insightsErr.message }, { status: 500 });
     }
 
-    // 2. Exact platform counts
     const platformNames = ['playstore', 'appstore', 'reddit', 'youtube'];
     const PLATFORM_DISPLAY = {
-      'playstore': 'Play Store',
-      'appstore': 'App Store',
-      'reddit': 'Reddit',
-      'youtube': 'YouTube'
+      playstore: 'Play Store',
+      appstore: 'App Store',
+      reddit: 'Reddit',
+      youtube: 'YouTube',
     };
 
     const platformCountResults = await Promise.all(
@@ -37,19 +35,45 @@ export async function GET() {
     const platforms = platformCountResults.sort((a, b) => b.count - a.count);
     const totalRawAnalyzed = platformCountResults.reduce((sum, p) => sum + p.count, 0);
 
-    // 3. Compute friction vs noise from canonical insights data
     const CANONICAL_LABELS = {
-      "fabric_quality_ambiguity": "Fabric Quality & Tactile Ambiguity",
-      "visual_reality_discrepancy": "Product Photo vs. Reality Mismatch",
-      "fit_sizing_anxiety": "Fit & Sizing Inconsistency",
-      "occasion_timing_delay": "Occasion Timing & Postponement",
-      "styling_pairing_doubt": "Styling & Wardrobe Pairing Uncertainty",
-      "choice_paralysis_shortlist": "Choice Overload & Comparison Fatigue",
-      "social_validation_delay": "Social Validation & Peer Opinion Delay",
+      fabric_quality_ambiguity: 'Fabric Quality & Tactile Ambiguity',
+      visual_reality_discrepancy: 'Product Photo vs. Reality Mismatch',
+      fit_sizing_anxiety: 'Fit & Sizing Inconsistency',
+      occasion_timing_delay: 'Occasion Timing & Postponement',
+      styling_pairing_doubt: 'Styling & Wardrobe Pairing Uncertainty',
+      choice_paralysis_shortlist: 'Choice Overload & Comparison Fatigue',
+      social_validation_delay: 'Social Validation & Peer Opinion Delay',
+      unrelated_other: 'Unrelated / Noise',
     };
 
-    let totalFrictionCount = 0;
-    let noiseCount = 0;
+    const themeRows = (insightsData || []).filter((row) => row && row.theme);
+    const noiseRow = themeRows.find((row) => row.theme === 'unrelated_other');
+    const nonNoiseRows = themeRows.filter((row) => row.theme !== 'unrelated_other');
+
+    let totalFrictionCount = nonNoiseRows.reduce((sum, row) => sum + (Number(row.mention_count) || 0), 0);
+    let noiseCount = Number(noiseRow?.mention_count || 0);
+    if (noiseCount === 0 && totalRawAnalyzed > 0) {
+      noiseCount = Math.max(0, totalRawAnalyzed - totalFrictionCount);
+    }
+
+    const insights = nonNoiseRows
+      .map((row) => {
+        const count = Number(row.mention_count) || 0;
+        const pctExact = totalFrictionCount > 0 ? (count / totalFrictionCount) * 100 : 0;
+        return {
+          id: row.theme,
+          theme: row.theme,
+          theme_label: row.theme_label || CANONICAL_LABELS[row.theme],
+          label: row.theme_label || CANONICAL_LABELS[row.theme],
+          mention_count: count,
+          count,
+          pct: Number(pctExact.toFixed(1)),
+          pct_exact: pctExact,
+          pct_formatted: `${Number(pctExact.toFixed(1))}%`,
+        };
+      })
+      .sort((a, b) => b.count - a.count);
+
     const aggregatedIntents = {
       high_intent_blocked: 0,
       occasion_waiting: 0,
@@ -58,43 +82,14 @@ export async function GET() {
       comparison_shortlisting: 0,
     };
 
-    const insights = [];
-
-    (insightsData || []).forEach((row) => {
-      const themeKey = row.theme;
-      if (themeKey === 'unrelated_other') {
-        noiseCount = row.mention_count || 0;
-      } else if (CANONICAL_LABELS[themeKey]) {
-        totalFrictionCount += row.mention_count || 0;
-        insights.push({
-          id: themeKey,
-          theme: themeKey,
-          theme_label: row.theme_label || CANONICAL_LABELS[themeKey],
-          label: row.theme_label || CANONICAL_LABELS[themeKey],
-          mention_count: row.mention_count || 0,
-          count: row.mention_count || 0,
-          pct: row.pct_of_total ? Math.round(row.pct_of_total) : 0,
-          pct_exact: row.pct_of_total || 0,
-        });
-      }
-
-      // Aggregate intent breakdown
+    themeRows.forEach((row) => {
       const ib = row.intent_breakdown || {};
       Object.keys(aggregatedIntents).forEach((key) => {
-        aggregatedIntents[key] += ib[key] || 0;
+        aggregatedIntents[key] += Number(ib[key] || 0);
       });
     });
 
-    // Sort insights by mention_count descending
-    insights.sort((a, b) => b.mention_count - a.mention_count);
-
-    // Reconcile total friction vs noise
-    if (noiseCount === 0 && totalRawAnalyzed > 0) {
-      noiseCount = totalRawAnalyzed - totalFrictionCount;
-    }
-
-    // 4. Intent breakdown
-    const totalNonNoiseIntent = Object.values(aggregatedIntents).reduce((sum, v) => sum + v, 0);
+    const totalIntentSignals = Object.values(aggregatedIntents).reduce((sum, value) => sum + value, 0);
     const INTENT_DISPLAY = [
       { id: 'high_intent_blocked', label: 'High intent, blocked by uncertainty', count: aggregatedIntents.high_intent_blocked },
       { id: 'occasion_waiting', label: 'Waiting for an occasion or event', count: aggregatedIntents.occasion_waiting },
@@ -103,12 +98,15 @@ export async function GET() {
       { id: 'comparison_shortlisting', label: 'Comparing options before deciding', count: aggregatedIntents.comparison_shortlisting },
     ];
 
-    const intents = INTENT_DISPLAY.map((item) => ({
-      ...item,
-      pct: totalNonNoiseIntent > 0 ? Math.round((item.count / totalNonNoiseIntent) * 100) : 0,
-      pct_formatted: totalNonNoiseIntent > 0 ? `${Math.round((item.count / totalNonNoiseIntent) * 100)}%` : '0%',
-      has_evidence: item.count > 0,
-    }));
+    const intents = INTENT_DISPLAY.map((item) => {
+      const pctExact = totalIntentSignals > 0 ? (item.count / totalIntentSignals) * 100 : 0;
+      return {
+        ...item,
+        pct: Number(pctExact.toFixed(1)),
+        pct_formatted: `${Number(pctExact.toFixed(1))}%`,
+        has_evidence: item.count > 0,
+      };
+    });
 
     return NextResponse.json({
       insights,
@@ -117,9 +115,11 @@ export async function GET() {
       total_raw_analyzed: totalRawAnalyzed,
       total_friction_count: totalFrictionCount,
       noise_count: noiseCount,
-      updated_at: new Date().toISOString()
+      total_intent_signals: totalIntentSignals,
+      methodology: 'Public user conversations were AI-classified for purchase-related friction. Wishlist intent is inferred from relevant signals and does not represent observed Wishlist → Purchase behaviour.',
+      source_mix: platforms.map((p) => `${p.name}: ${p.count}`).join(', '),
+      updated_at: new Date().toISOString(),
     });
-
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

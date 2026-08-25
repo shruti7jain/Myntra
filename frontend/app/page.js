@@ -1,21 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
 import {
-  Send, Loader2, RefreshCw, ChevronRight,
-  AlertTriangle, CheckCircle2, Database, Zap, GitBranch,
-  MessageSquare, LayoutDashboard, Bot, ArrowRight,
-  FileText, Target, Shield, Quote, Eye
+    AlertTriangle,
+    ArrowRight,
+    Bot,
+    CheckCircle2, Database,
+    FileText,
+    GitBranch,
+    LayoutDashboard,
+    Loader2, RefreshCw,
+    Send,
+    Shield,
+    Target,
+    Zap
 } from 'lucide-react';
-
-// ─── All numbers are consistent:
-//   1,486 total verbatims scraped
-//   {noiseCount.toLocaleString()}   noise filtered out (off-topic, positives, delivery complaints)
-//   {totalFrictionCount.toLocaleString()} friction signals identified (1,486 - {noiseCount.toLocaleString()})
-//   Theme percentages = % of {totalFrictionCount.toLocaleString()} friction signals
-// ─────────────────────────────────────────────────────────────────────────────
-
-
+import { useEffect, useRef, useState } from 'react';
 
 const OPPORTUNITIES = [
   { id: 'fit_sizing_anxiety', theme: 'fit_sizing_anxiety', label: 'AI TrueFit Body Score', tag: 'Solves Fit & Sizing', impact: 'Critical', what: 'A personalised 1–100 fit confidence score based on the user\'s body measurements and their verified non-return purchase history across similar items.', why: 'Brand size charts are inconsistent across categories — an M in Western wear doesn\'t match an M in Ethnic wear. High-intent users give up rather than risk ordering the wrong size.', workaround: 'Users leave Myntra to search Reddit threads like "Does Anouk run large?" before they can commit to buying.' },
@@ -303,6 +302,16 @@ export default function MyntraDiscoveryEngine() {
                 </div>
               </div>
 
+              <div className="bg-white border border-[#e9e9eb] rounded-xl p-4">
+                <p className="text-[10px] font-black text-[#94969f] uppercase tracking-wider mb-2">Methodology</p>
+                <p className="text-[10px] text-[#535766] leading-relaxed">
+                  Public user conversations were AI-classified for purchase-related friction. Wishlist intent is inferred from relevant signals and does not represent observed Wishlist → Purchase behaviour.
+                </p>
+                <p className="text-[10px] text-[#94969f] mt-2 leading-relaxed">
+                  Source mix: {platforms.map((p) => `${p.name} (${p.count})`).join(' · ')}. Findings reflect signals from the available public conversation corpus, not necessarily all Myntra users.
+                </p>
+              </div>
+
               {/* ── Friction chart + Key findings ── */}
               <div className="grid grid-cols-5 gap-5">
 
@@ -391,8 +400,8 @@ export default function MyntraDiscoveryEngine() {
               <div className="bg-white border border-[#e9e9eb] rounded-xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-[#e9e9eb] flex items-center justify-between">
                   <div>
-                    <p className="text-[13px] font-bold text-[#282C3F]">What users actually said</p>
-                    <p className="text-[10px] text-[#94969f] mt-0.5">Live verbatims — platform-attributed, PII sanitised</p>
+                    <p className="text-[13px] font-bold text-[#282C3F]">Sample filtered public conversations</p>
+                    <p className="text-[10px] text-[#94969f] mt-0.5">Live verbatims — platform-attributed, PII sanitised, only where the theme is supported by the evidence</p>
                   </div>
                   <button
                     onClick={() => setShowAllQuotes(!showAllQuotes)}
@@ -431,36 +440,37 @@ export default function MyntraDiscoveryEngine() {
                 </div>
                 <div className="divide-y divide-[#e9e9eb]">
                   {OPPORTUNITIES.map((opp, i) => {
-                    const themeData = themes.find(t => t.theme === opp.theme || t.id === opp.id) || { pct: 0, count: 0 };
+                    const themeData = themes.find((t) => t.theme === opp.theme || t.id === opp.id) || { pct: 0, count: 0 };
                     const hasEvidence = (themeData.count || 0) > 0 || (themeData.mention_count || 0) > 0;
                     return (
-                    <div key={opp.id} className="p-5 hover:bg-[#fafafa] transition-colors flex gap-5">
-                      <div className="w-8 h-8 rounded-full bg-[#282C3F] text-white flex-shrink-0 flex items-center justify-center font-black text-[12px]">
-                        {i + 1}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-[12px] font-bold text-[#282C3F]">{opp.label}</h3>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${hasEvidence ? 'bg-[#fff0f3] text-[#ff3f6c]' : 'bg-[#f5f5f6] text-[#94969f]'}`}>
-                            {hasEvidence ? `${opp.tag} (${themeData.pct}% of friction)` : `${opp.tag} (Exploratory · 0% data evidence)`}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#f5f5f6] text-[#535766]">
-                            Impact: {opp.impact}
-                          </span>
+                      <div key={opp.id} className="p-5 hover:bg-[#fafafa] transition-colors flex gap-5">
+                        <div className="w-8 h-8 rounded-full bg-[#282C3F] text-white flex-shrink-0 flex items-center justify-center font-black text-[12px]">
+                          {i + 1}
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-[9px] font-black uppercase tracking-wider text-[#94969f] mb-1">What & How</p>
-                            <p className="text-[10px] text-[#535766] leading-relaxed">{opp.what}</p>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-[12px] font-bold text-[#282C3F]">{opp.label}</h3>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${hasEvidence ? 'bg-[#fff0f3] text-[#ff3f6c]' : 'bg-[#f5f5f6] text-[#94969f]'}`}>
+                              {hasEvidence ? `Evidence-backed · ${themeData.pct}%` : 'Exploratory · 0% evidence'}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#f5f5f6] text-[#535766]">
+                              Impact: {opp.impact}
+                            </span>
                           </div>
-                          <div>
-                            <p className="text-[9px] font-black uppercase tracking-wider text-[#94969f] mb-1">Why it matters</p>
-                            <p className="text-[10px] text-[#535766] leading-relaxed">{opp.why}</p>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-[9px] font-black uppercase tracking-wider text-[#94969f] mb-1">What & How</p>
+                              <p className="text-[10px] text-[#535766] leading-relaxed">{opp.what}</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-black uppercase tracking-wider text-[#94969f] mb-1">Why it matters</p>
+                              <p className="text-[10px] text-[#535766] leading-relaxed">{opp.why}</p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )})}
+                    );
+                  })}
                 </div>
               </div>
 
