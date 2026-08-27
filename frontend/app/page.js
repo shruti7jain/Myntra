@@ -2,28 +2,51 @@
 
 import {
     AlertTriangle,
-    ArrowRight,
     Bot,
-    CheckCircle2, Database,
+    CheckCircle2,
     FileText,
-    GitBranch,
     LayoutDashboard,
     Loader2, RefreshCw,
     Send,
-    Shield,
-    Target,
-    Zap
+    Target
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const OPPORTUNITIES = [
-  { id: 'fit_sizing_anxiety', theme: 'fit_sizing_anxiety', label: 'AI TrueFit Body Score', tag: 'Solves Fit & Sizing', impact: 'Critical', what: 'A personalised 1–100 fit confidence score based on the user\'s body measurements and their verified non-return purchase history across similar items.', why: 'Brand size charts are inconsistent across categories — an M in Western wear doesn\'t match an M in Ethnic wear. High-intent users give up rather than risk ordering the wrong size.', workaround: 'Users leave Myntra to search Reddit threads like "Does Anouk run large?" before they can commit to buying.' },
-  { id: 'fabric_quality_ambiguity', theme: 'fabric_quality_ambiguity', label: 'Tactile Confidence Tags', tag: 'Solves Fabric Ambiguity', impact: 'High', what: 'A verified buyer-sourced Sheerness Scale (1–5) and GSM thickness badge shown on every fabric-heavy listing — sourced exclusively from purchase-verified reviewers.', why: 'Studio photography with professional lighting hides fabric sheerness and structural thinness. There is no way for users to assess real material quality from product images.', workaround: 'Users watch YouTube unboxing hauls under natural light before ordering — a multi-hour detour that often kills purchase momentum.' },
-  { id: 'occasion_timing_delay', theme: 'occasion_timing_delay', label: 'Event-Aware Wishlist Reminders', tag: 'Solves Occasion Timing', impact: 'High', what: 'Smart occasion-aware nudges that remind users about wishlisted items as their saved event/occasion approaches — with stock alerts and styling suggestions.', why: 'Users save items for future events (weddings, festivals, trips) but delay purchase until closer to the date, risking out-of-stock and losing the item.', workaround: 'Users set personal phone reminders or hope they remember to check back before the event — many forget and buy from local stores instead.' },
-  { id: 'visual_reality_discrepancy', theme: 'visual_reality_discrepancy', label: 'Real-Light Photo Verifier', tag: 'Solves Photo Mismatch', impact: 'Medium', what: 'A buyer-uploaded photo gallery with lighting tags (natural light, indoor, flash) so users can see the real product appearance beyond studio shots.', why: 'Studio photography with professional lighting creates unrealistic color and finish expectations. Users fear the product will look different in person.', workaround: 'Users search YouTube and Instagram for real customer photos and unboxing videos before ordering — adding hours of research friction.' },
-  { id: 'styling_pairing_doubt', theme: 'styling_pairing_doubt', label: 'Contextual Outfit Builder', tag: 'Solves Styling Doubt', impact: 'Medium', what: '"Style it with" AI outfit recommendations using real buyer-uploaded community photos — not studio model shoots.', why: 'Users wishlist items they love visually but cannot picture wearing with their existing wardrobe. Without a clear outfit plan, items stay saved indefinitely.', workaround: 'Screenshots sent to WhatsApp groups asking for outfit-pairing advice — takes hours and routinely kills purchase intent while waiting for replies.' },
-  { id: 'social_validation_delay', theme: 'social_validation_delay', label: 'In-App Share & Vote', tag: 'Solves Social Validation', impact: 'Medium', what: 'A native wishlist share card with quick reaction options, keeping the social validation loop inside Myntra with purchase as the immediate next step.', why: 'Users want peer approval before checkout, especially for gifting and festive wear. The decision is suspended pending WhatsApp or Instagram responses that may never come.', workaround: 'Instagram story polls — "should I buy this?" — all happening outside Myntra, creating high exit and non-return risk.' },
-  { id: 'choice_paralysis_shortlist', theme: 'choice_paralysis_shortlist', label: 'Smart Wishlist Curator', tag: 'Solves Choice Paralysis', impact: 'Low–Medium', what: 'An AI-ranked shortlist of the top 3 "Best Match" items from the user\'s wishlist, surfaced by occasion, fit confidence, and review consensus.', why: 'Users accumulate 40–60+ undifferentiated saved items with no prioritisation. Cognitive overload leads to total abandonment of the wishlist.', workaround: 'Manual multi-tab browser comparison — most users give up and mass-delete the entire wishlist rather than choose.' }
+  { id: 'fit_sizing_anxiety', theme: 'fit_sizing_anxiety', label: 'Fit confidence gap', tag: 'Potential opportunity area', impact: 'High', what: 'Users appear to save products they want but hesitate because they cannot confidently predict fit before purchase.', why: 'The strongest signal in the discovery corpus is uncertainty around size and fit at the decision stage.', evidence: 'Cross-source evidence volume and repeated size-fit hesitation in public conversations.' },
+  { id: 'fabric_quality_ambiguity', theme: 'fabric_quality_ambiguity', label: 'Fabric / quality uncertainty', tag: 'Potential opportunity area', impact: 'High', what: 'Material feel and visibility are not obvious from product presentation, creating uncertainty before a purchase decision.', why: 'Users often hesitate when they cannot tell whether the material will feel right or look cheap/sheer.', evidence: 'Repeat mentions of transparency, thickness, fabric feel and quality uncertainty.' },
+  { id: 'occasion_timing_delay', theme: 'occasion_timing_delay', label: 'Occasion-based delay', tag: 'Potential opportunity area', impact: 'High', what: 'Some saved products appear to be parked for future events rather than immediate purchase intent.', why: 'Users may save an item for a wedding, holiday, or future need and delay the decision until timing becomes clearer.', evidence: 'Strong timing and postponement signals across public voice evidence.' },
+  { id: 'visual_reality_discrepancy', theme: 'visual_reality_discrepancy', label: 'Photo-to-reality confidence gap', tag: 'Potential opportunity area', impact: 'Medium', what: 'Users express concern that the final product may not match the visual representation they saw.', why: 'Differences in colour, finish, material or styling can reduce purchase confidence even after initial interest.', evidence: 'Public discussions question whether the real item will look like the studio photos.' },
+  { id: 'styling_pairing_doubt', theme: 'styling_pairing_doubt', label: 'Styling / wardrobe fit uncertainty', tag: 'Potential opportunity area', impact: 'Medium', what: 'Users may like a product but not know how it fits into their actual wardrobe or outfit plan.', why: 'Without a styling context, interest remains a saved item rather than an immediate purchase.', evidence: 'Recurrent concern about pairing and outfit confidence.' },
+  { id: 'social_validation_delay', theme: 'social_validation_delay', label: 'External validation behaviour', tag: 'Potential opportunity area', impact: 'Medium', what: 'Users appear to seek reassurance from others before deciding, which may delay conversion.', why: 'The public corpus suggests a confidence-building loop outside the app, but this requires validation.', evidence: 'Reddit/YouTube/community reference patterns exist, but not enough to prove app abandonment.' },
+  { id: 'choice_paralysis_shortlist', theme: 'choice_paralysis_shortlist', label: 'Comparison and shortlist overload', tag: 'Potential opportunity area', impact: 'Medium', what: 'Users may save multiple similar products and stall while comparing alternatives.', why: 'Decision fatigue and comparison delay can turn a wishlisted item into a parked item instead of a purchase.', evidence: 'Explicit comparison and shortlist hesitation appears in several conversations.' }
+];
+
+const HYPOTHESIS_SECTIONS = [
+  {
+    id: 'H1',
+    title: 'H1 — THE DOUBT HAS A NAME',
+    status: 'SUPPORTED',
+    summary: 'Fit, fabric and photo-reality uncertainty are the clearest product-confidence blockers in the public evidence.',
+    themes: ['fit_sizing_anxiety', 'fabric_quality_ambiguity', 'visual_reality_discrepancy'],
+    note: 'Engine signal: confidence gap is visible. Primary research: which of these uncertainties actually drives non-purchase?'
+  },
+  {
+    id: 'H2',
+    title: 'H2 — CONFIDENCE MAY BE BUILT OUTSIDE THE APP',
+    status: 'PARTIALLY SUPPORTED',
+    summary: 'External validation behaviour appears in the corpus, but the existing data does not prove where users resolve uncertainty.',
+    themes: ['social_validation_delay'],
+    note: 'Engine signal: users seek reassurance externally. Primary research: where do they actually resolve that uncertainty?'
+  },
+  {
+    id: 'H3',
+    title: 'H3 — THE WISHLIST IS A PARKING LOT FOR DECISIONS',
+    status: 'SUPPORTED',
+    summary: 'A saved item often reflects delayed decisions, occasion timing, or comparison instead of immediate purchase intent.',
+    themes: ['occasion_timing_delay', 'choice_paralysis_shortlist'],
+    note: 'Engine signal: wishlist often indicates consideration, not commitment. Primary research: what state-of-intent is most predictive of purchase within 30 days?'
+  }
 ];
 
 const PLATFORM_BADGE = {
@@ -34,10 +57,11 @@ const PLATFORM_BADGE = {
 };
 
 const SUGGESTED_QUERIES = [
-  'Write a PRD for the AI TrueFit Body Score feature.',
-  'Why do users not complete purchases from their wishlist?',
-  'What do users say about Ethnic Wear sizing specifically?',
-  'Which opportunity should we validate first in user interviews?',
+  'What are the strongest goal-relevant themes in the current corpus?',
+  'Which wishlist-to-purchase signals are strongest across App Store vs Play Store?',
+  'What evidence suggests fit or sizing uncertainty?',
+  'What do users do when they feel uncertain about a saved product?',
+  'Which themes appear to represent delayed purchase intent rather than immediate buying intent?',
 ];
 
 function PBadge({ platform }) {
@@ -68,6 +92,7 @@ export default function MyntraDiscoveryEngine() {
   const [syncing, setSyncing] = useState(false);
   const [showAllQuotes, setShowAllQuotes] = useState(false);
   const [lastSynced, setLastSynced] = useState(null);
+  const [lastFetchedAt, setLastFetchedAt] = useState(null);
   const [themes, setThemes] = useState([]);
   const [intents, setIntents] = useState([]);
   const [platforms, setPlatforms] = useState([
@@ -81,7 +106,7 @@ export default function MyntraDiscoveryEngine() {
   const [totalFrictionCount, setTotalFrictionCount] = useState(0);
   const [noiseCount, setNoiseCount] = useState(0);
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hello! I am your Myntra AI Discovery Copilot. I have analysed live user conversations across Play Store, App Store, Reddit, and YouTube. Ask me to explain any friction theme, draft a PRD, or suggest which opportunity to prioritise first.' }
+    { role: 'assistant', content: 'Hello! I am the Myntra Wishlist → Purchase Discovery Copilot. I analyse public conversations across App Store, Play Store, YouTube, and Reddit to identify purchase-decision signals, uncertainty, and delay patterns tied to saved fashion items.' }
   ]);
   const [input, setInput] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -97,6 +122,7 @@ export default function MyntraDiscoveryEngine() {
         if (d.total_raw_analyzed) setTotalAnalyzed(d.total_raw_analyzed);
         if (d.insights?.length > 0) setDbInsights(d.insights);
         if (d.intents?.length > 0) setIntents(d.intents);
+        if (d.updated_at) setLastFetchedAt(new Date(d.updated_at).toLocaleString());
       } catch {}
     })();
   }, []);
@@ -115,6 +141,7 @@ export default function MyntraDiscoveryEngine() {
         setDbInsights(d.insights);
         setThemes(d.insights);
       }
+      if (d.updated_at) setLastFetchedAt(new Date(d.updated_at).toLocaleString());
       setLastSynced(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch {}
     setSyncing(false);
@@ -129,7 +156,7 @@ export default function MyntraDiscoveryEngine() {
   const fetchQuotes = async () => {
     setLoadingQuotes(true);
     try {
-      const r = await fetch(`/api/verbatims?limit=1500`);
+      const r = await fetch(`/api/verbatims?limit=1500`, { cache: 'no-store' });
       const d = await r.json();
       if (d.verbatims) setQuotes(d.verbatims);
     } catch {}
@@ -243,9 +270,16 @@ export default function MyntraDiscoveryEngine() {
               {tab === 'copilot'   && `Grounded in ${totalAnalyzed ? totalAnalyzed.toLocaleString() : '...'} VoC verbatims · Groq Llama 3.3 · Live database`}
             </p>
           </div>
-          <span className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-[#fff0f3] text-[#ff3f6c] border border-[#ffcdd7] flex items-center gap-1.5 flex-shrink-0">
-            <Target className="w-3 h-3" /> No Monetary Incentives
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-[#fff0f3] text-[#ff3f6c] border border-[#ffcdd7] flex items-center gap-1.5 flex-shrink-0">
+              <Target className="w-3 h-3" /> No Monetary Incentives
+            </span>
+            {lastFetchedAt && (
+              <span className="text-[9px] text-[#94969f] font-medium whitespace-nowrap">
+                Data last fetched: {lastFetchedAt}
+              </span>
+            )}
+          </div>
         </header>
 
         {/* Page Content */}
@@ -260,9 +294,9 @@ export default function MyntraDiscoveryEngine() {
               {/* ── 3 KPIs ── */}
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: 'User conversations analysed',  val: totalAnalyzed.toLocaleString(), sub: 'From 4 platforms, scraped daily via GitHub Actions', icon: FileText },
-                  { label: 'Friction signals identified',  val: totalFrictionCount.toLocaleString(),                        sub: 'Genuine purchase blockers — tagged by Groq Llama 3.3', icon: AlertTriangle },
-                  { label: 'Noise filtered out',           val: noiseCount.toLocaleString(),     sub: 'Off-topic reviews, delivery issues, unrelated positives', icon: CheckCircle2 },
+                  { label: 'Public conversations analysed',  val: totalAnalyzed.toLocaleString(), sub: 'Across App Store, Play Store, YouTube and Reddit — discovery evidence only', icon: FileText },
+                  { label: 'Goal-relevant purchase-friction signals',  val: totalFrictionCount.toLocaleString(), sub: 'Signals tied to saved-item hesitation, delay or abandonment', icon: AlertTriangle },
+                  { label: 'Filtered out-of-scope / noise', val: noiseCount.toLocaleString(), sub: 'Generic complaints, app bugs, post-purchase issues, unrelated positives', icon: CheckCircle2 },
                 ].map((k, i) => (
                   <div key={i} className="bg-white rounded-xl border border-[#e9e9eb] p-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -275,41 +309,6 @@ export default function MyntraDiscoveryEngine() {
                     <p className="text-[10px] text-[#94969f] mt-1 leading-snug">{k.sub}</p>
                   </div>
                 ))}
-              </div>
-
-              {/* ── Pipeline (compact) ── */}
-              <div className="bg-white border border-[#e9e9eb] rounded-xl p-5">
-                <p className="text-[11px] font-black text-[#94969f] uppercase tracking-wider mb-4">How the Discovery Engine Works</p>
-                <div className="flex items-center">
-                  {[
-                    { step: '1  Collect',   detail: '4 platforms scraped daily',      icon: Database },
-                    { step: '2  Clean',     detail: 'PII removed · deduped · filtered', icon: Shield },
-                    { step: '3  AI Tag',    detail: 'Groq Llama 3.3 classifies each verbatim', icon: Zap },
-                    { step: '4  Aggregate', detail: '5 themes · intent types · categories', icon: GitBranch },
-                    { step: '5  Display',   detail: 'Live evidence-backed PM dashboard',  icon: LayoutDashboard },
-                  ].map((s, i, arr) => (
-                    <div key={i} className="flex items-center flex-1">
-                      <div className="flex-1 flex flex-col items-center gap-1.5 text-center">
-                        <div className="w-8 h-8 rounded-full bg-[#fff0f3] border border-[#ffcdd7] flex items-center justify-center">
-                          <s.icon className="w-3.5 h-3.5 text-[#ff3f6c]" />
-                        </div>
-                        <p className="text-[10px] font-bold text-[#282C3F]">{s.step}</p>
-                        <p className="text-[9px] text-[#94969f] leading-snug">{s.detail}</p>
-                      </div>
-                      {i < arr.length - 1 && <ArrowRight className="w-3 h-3 text-[#d1d5db] flex-shrink-0 mb-5" />}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white border border-[#e9e9eb] rounded-xl p-4">
-                <p className="text-[10px] font-black text-[#94969f] uppercase tracking-wider mb-2">Methodology</p>
-                <p className="text-[10px] text-[#535766] leading-relaxed">
-                  Public user conversations were AI-classified for purchase-related friction. Wishlist intent is inferred from relevant signals and does not represent observed Wishlist → Purchase behaviour.
-                </p>
-                <p className="text-[10px] text-[#94969f] mt-2 leading-relaxed">
-                  Source mix: {platforms.map((p) => `${p.name} (${p.count})`).join(' · ')}. Findings reflect signals from the available public conversation corpus, not necessarily all Myntra users.
-                </p>
               </div>
 
               {/* ── Friction chart + Key findings ── */}
@@ -435,8 +434,8 @@ export default function MyntraDiscoveryEngine() {
               {/* ── OPPORTUNITIES ── */}
               <div className="bg-white border border-[#e9e9eb] rounded-xl overflow-hidden mt-5">
                 <div className="px-5 py-4 border-b border-[#e9e9eb]">
-                  <p className="text-[13px] font-bold text-[#282C3F]">Actionable Product Opportunities</p>
-                  <p className="text-[10px] text-[#94969f] mt-0.5">Top 7 data-backed interventions to reduce wishlist abandonment</p>
+                  <p className="text-[13px] font-bold text-[#282C3F]">Potential opportunity areas</p>
+                  <p className="text-[10px] text-[#94969f] mt-0.5">Discovery-stage themes only — not final product recommendations</p>
                 </div>
                 <div className="divide-y divide-[#e9e9eb]">
                   {OPPORTUNITIES.map((opp, i) => {
@@ -454,16 +453,16 @@ export default function MyntraDiscoveryEngine() {
                               {hasEvidence ? `Evidence-backed · ${themeData.pct}%` : 'Exploratory · 0% evidence'}
                             </span>
                             <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#f5f5f6] text-[#535766]">
-                              Impact: {opp.impact}
+                              {opp.impact}
                             </span>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <p className="text-[9px] font-black uppercase tracking-wider text-[#94969f] mb-1">What & How</p>
+                              <p className="text-[9px] font-black uppercase tracking-wider text-[#94969f] mb-1">Discovery signal</p>
                               <p className="text-[10px] text-[#535766] leading-relaxed">{opp.what}</p>
                             </div>
                             <div>
-                              <p className="text-[9px] font-black uppercase tracking-wider text-[#94969f] mb-1">Why it matters</p>
+                              <p className="text-[9px] font-black uppercase tracking-wider text-[#94969f] mb-1">Why this matters</p>
                               <p className="text-[10px] text-[#535766] leading-relaxed">{opp.why}</p>
                             </div>
                           </div>
@@ -532,7 +531,7 @@ export default function MyntraDiscoveryEngine() {
                       value={input}
                       onChange={e => setInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && sendMsg()}
-                      placeholder="Ask about any friction theme, draft a PRD, or ask for interview questions..."
+                      placeholder="Ask about a discovery theme, evidence strength, or source comparison..."
                       className="flex-1 rounded-xl py-2.5 px-3.5 text-[11px] bg-[#f5f5f6] border border-[#e9e9eb] text-[#282C3F] placeholder-[#94969f] focus:outline-none focus:border-[#ff3f6c] focus:bg-white transition-colors"
                       disabled={generating}
                     />

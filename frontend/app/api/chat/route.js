@@ -60,7 +60,7 @@ export async function POST(req) {
       })
       .join('\n\n');
 
-    const systemPrompt = `You are the Myntra Wishlist AI Discovery Copilot. You help Product Managers on the Growth Team understand why users add fashion items to their wishlist but don't purchase within 30 days.
+    const systemPrompt = `You are the Myntra Wishlist → Purchase Discovery Copilot. Your job is to help the Growth Team understand why a user adds a fashion item to a wishlist but does not purchase it.
 
 LIVE VoC DATA (${totalAnalyzed.toLocaleString()} verbatims analysed across Play Store, App Store, Reddit, YouTube):
 
@@ -68,12 +68,13 @@ ${contextStr}
 
 STRICT RULES:
 1. Ground ALL answers exclusively on the empirical data above. Never invent statistics, themes, or quotes.
-2. If asked about data not present in the context, say "This is not captured in the current dataset" — don't guess.
-3. Strategic constraint: ZERO MONETARY INCENTIVES (no discounts, coupons, cashback). Focus on non-monetary levers: size/fit clarity, fabric tactile confidence, photo-reality alignment, occasion timing, styling context, and social validation features.
-4. Be concise, structured, and speak directly to a Product Manager — use bullet points and clear headings.
-5. When quoting a customer, label it clearly as "Customer verbatim:" and only use quotes from the data provided above.
-6. Distinguish between DATA FINDING, INFERENCE, and HYPOTHESIS clearly in the answer.
-7. Use the available public conversations as evidence, not universal user claims.`;
+2. If asked about data not present in the context, say "This is not captured in the current dataset" — do not guess.
+3. The core research object is WISHLIST → PURCHASE FRICTION, not general app friction. Keep all answers tied to saved-item hesitation, decision delay, or abandonment.
+4. Keep a clear distinction between OBSERVED DATA, ENGINE SIGNAL, INFERENCE, and HYPOTHESIS.
+5. Use language such as "purchase-friction signal", "wishlist-relevant signal", "signals consistent with", and "requires primary research validation" where appropriate.
+6. Be concise, structured, and PM-oriented: use bullet points and clear headings.
+7. Never claim a causal relationship or population prevalence without direct evidence.
+8. Strategic constraint: ZERO MONETARY INCENTIVES. Focus on confidence uncertainty, timing, style fit, and decision-making friction, not discounts or coupons.`;
 
     // -------------------------------------------------------------------------
     // 2. Try Groq LLM first
@@ -145,8 +146,8 @@ STRICT RULES:
         reply =
           `**DATA FINDING:** ${fitTheme.theme_label} — ${fitTheme.mention_count} mentions (${fitTheme.pct_of_total}% of friction signals).\n\n` +
           (q ? `Customer verbatim: "${q}"\n\n` : '') +
-          `**INFERENCE:** Fit uncertainty is a primary purchase blocker in the current corpus.\n\n` +
-          `**PM Recommendation:** Add a body-measurement fit confidence score and size guidance for wishlisted items.`;
+          `**INFERENCE:** This is a strong wishlist-relevant uncertainty signal in the current corpus.\n\n` +
+          `**HYPOTHESIS:** Fit confidence may be an important blocker in the saved-item decision moment, but this should be validated with direct user research.`;
       } else {
         reply = 'This is not captured in the current dataset.';
       }
@@ -157,8 +158,8 @@ STRICT RULES:
         reply =
           `**DATA FINDING:** ${fabricTheme.theme_label} — ${fabricTheme.mention_count} mentions (${fabricTheme.pct_of_total}% of friction signals).\n\n` +
           (q ? `Customer verbatim: "${q}"\n\n` : '') +
-          `**INFERENCE:** Fabric ambiguity reduces buying confidence before checkout.\n\n` +
-          `**PM Recommendation:** Add a sheerness and material confidence layer to product pages.`;
+          `**INFERENCE:** Fabric uncertainty appears to reduce confidence before purchase.\n\n` +
+          `**HYPOTHESIS:** Material confidence may be a discovery-stage opportunity area, but it is not yet a confirmed solution path.`;
       } else {
         reply = 'This is not captured in the current dataset.';
       }
@@ -169,8 +170,8 @@ STRICT RULES:
         reply =
           `**DATA FINDING:** ${photoTheme.theme_label} — ${photoTheme.mention_count} mentions (${photoTheme.pct_of_total}% of friction signals).\n\n` +
           (q ? `Customer verbatim: "${q}"\n\n` : '') +
-          `**INFERENCE:** Photo-to-reality mismatch creates confidence loss.\n\n` +
-          `**PM Recommendation:** Surface real-customer photo evidence and lighting metadata where possible.`;
+          `**INFERENCE:** Photo-to-reality mismatch is a recurring confidence signal in the discovery corpus.\n\n` +
+          `**HYPOTHESIS:** This may represent a meaningful product-confidence gap, but the public data cannot prove the final product response.`;
       } else {
         reply = 'This is not captured in the current dataset.';
       }
@@ -181,8 +182,8 @@ STRICT RULES:
         reply =
           `**DATA FINDING:** ${fitTheme.theme_label} — ${fitTheme.mention_count} mentions (${fitTheme.pct_of_total}% of friction signals).\n\n` +
           (q ? `Customer verbatim: "${q}"\n\n` : '') +
-          `**INFERENCE:** Fit uncertainty is a clear conversion blocker.\n\n` +
-          `**PM Recommendation:** Add a fit-confidence score and clearer size guidance on wishlisted items.`;
+          `**INFERENCE:** Fit uncertainty is the strongest goal-relevant signal in the current discovery corpus.\n\n` +
+          `**HYPOTHESIS:** This suggests that confidence at the saved-item decision stage is a promising discovery opportunity, but the public data does not confirm the final solution.`;
       } else {
         reply = 'This is not captured in the current dataset.';
       }

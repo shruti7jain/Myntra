@@ -69,15 +69,18 @@ def classify_batch_with_llm(groq_client, batch_items: list[dict]) -> dict:
     system_prompt = """You are an expert E-Commerce VoC Intelligence Classifier for Myntra fashion.
 Classify each customer review in the input JSON array into structured friction signals.
 
-FRICTION THEMES:
-- 'fabric_quality_ambiguity': thin material, see-through, cheap fabric, poor quality cloth
-- 'visual_reality_discrepancy': color different from picture, looks different from app photo
-- 'fit_sizing_anxiety': wrong size, tight, loose, size small, not fit for me, size chart issue, size exchange
-- 'occasion_timing_delay': delivery delay before event, need it for wedding/party
-- 'styling_pairing_doubt': how to style, what to pair with
-- 'choice_paralysis_shortlist': can't decide between wishlist items
-- 'social_validation_delay': asking friend for opinion
-- 'unrelated_other': refund status, general delivery complaint, app crash, customer service issue, positive review
+IMPORTANT CRITERIA: You MUST explicitly distinguish between PRE-purchase hesitation and POST-purchase complaints.
+If a user is complaining about an item they ALREADY BOUGHT (e.g., "I bought this and it was the wrong size", "returned because fabric was bad"), classify it as 'unrelated_other' with intent_type 'noise'. We only care about friction that prevents a purchase from a wishlist or hesitation BEFORE buying.
+
+FRICTION THEMES (PRE-PURCHASE ONLY):
+- 'fabric_quality_ambiguity': afraid the material is thin, unsure if fabric is good, looks see-through
+- 'visual_reality_discrepancy': afraid color differs from picture, unsure if it looks like the photo
+- 'fit_sizing_anxiety': size chart confusing, afraid it will be too tight/loose, unsure what size to order
+- 'occasion_timing_delay': afraid it won't arrive before event, unsure if delivery will be on time for wedding
+- 'styling_pairing_doubt': don't know how to style, not sure what to pair it with
+- 'choice_paralysis_shortlist': can't decide between wishlist items, too many options
+- 'social_validation_delay': waiting for friend's opinion, saving to ask mom
+- 'unrelated_other': ALL POST-PURCHASE COMPLAINTS (returns, wrong size received, bad fabric received), refund status, general delivery complaint, app crash, customer service issue, positive review
 
 OUTPUT SCHEMA:
 Respond ONLY with a raw JSON array of objects. Strict double quotes. No text before or after.
@@ -174,14 +177,39 @@ def classify_text_heuristically(text: str, keyword: str) -> dict:
         "best app ever", "love myntra", "amazing app", "fantastic service",
         "delivery was fast", "5 star", "excellent service", "super fast delivery",
         "great in quality", "great quality", "benefited me", "love this app", "good app",
+        "customer service", "return request", "cancel the return", "wrong product", "delivered wrong product",
+        "investigation team", "not gonna place an order", "we are helpless"
     ]
     if any(w in t_lower for w in noise_signals):
         theme = "unrelated_other"
         is_friction = False
 
     # -----------------------------------------------------------------------
-    # STEP 2: Fit & Sizing signals (most specific — check first)
-    # Require explicit fit terms OR return/exchange paired with fit context
+    # STEP 2: Explicit post-purchase complaint guard
+    # These are not pre-purchase friction, even if they mention size or service.
+    # -----------------------------------------------------------------------
+    elif (
+        any(term in t_lower for term in [
+            "i bought", "i ordered", "ordered this", "bought this", "received this",
+            "delivered wrong", "wrong product", "return request", "returned it",
+            "cancel the return", "customer service", "investigation team", "arrived and",
+            "delivered this", "order kiya tha", "mene m size order kiya tha"
+        ])
+        and (
+            any(term in t_lower for term in [
+                "too tight", "tight", "too loose", "wrong size", "size chart",
+                "not fit", "does not fit", "doesn't fit", "size issue", "small size",
+                "large size", "return", "refund", "customer service", "wrong product"
+            ])
+        )
+    ):
+        theme = "unrelated_other"
+        is_friction = False
+
+    # -----------------------------------------------------------------------
+    # STEP 3: Fit & Sizing signals (pre-purchase only)
+    # Require explicit fit terms in a pre-purchase context; do not classify
+    # post-purchase fit complaints as wishlist friction.
     # -----------------------------------------------------------------------
     elif any(w in t_lower or w in kw_lower for w in [
         "true to size", "size up", "size down", "runs small", "runs large",
@@ -189,12 +217,12 @@ def classify_text_heuristically(text: str, keyword: str) -> dict:
         "size chart", "size guide", "waist size", "size small", "wrong size",
         "not fit for", "not fitting", "does not fit me", "doesn't fit", "size mismatch", "size issue", "too tight", "too loose",
         "too small", "too large", "tight fit", "loose fit", "small size", "large size",
-    ]) or (
-        any(w in t_lower for w in ["return", "returned", "exchange", "exchanged"])
-        and any(w in t_lower for w in ["size", "fitting", "tight", "loose", "small", "large"])
-        and "fit the standard" not in t_lower
-        and "return guidelines" not in t_lower
-    ):
+    ]) and not any(term in t_lower for term in [
+        "i bought", "i ordered", "ordered this", "bought this", "received this",
+        "delivered wrong", "wrong product", "return request", "returned it",
+        "cancel the return", "customer service", "investigation team", "delivered this",
+        "order kiya tha", "mene m size order kiya tha"
+    ]):
         theme = "fit_sizing_anxiety"
         is_friction = True
 

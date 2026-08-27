@@ -1,0 +1,296 @@
+Myntra WishlistThe Demand Already Exists. The Conversion Doesn't.
+---
+Mobile MAU
+90M+
+ (Mar 2026, all-time high)
+---
+Repeat Purchase Rate51.79% of fashion buyers ordered >1x (Q1 2026)
+---
+Purchase Frequency
+Gen Z 8–10x/yr
+ vs.
+ Millennial 4–5x/yr
+---
+Operating Revenue
+Revenue
+₹6,043 Cr
+ (FY25, +18% YoY)
+---
+Sources: Sensor Tower, State of eCommerce 2026 (Mar 2026) · Myntra RoC filings, FY25 · Myntra CEO Nandita Sinha, TechSparks, Nov 2025 · Vumonic Datalabs, Jun 2026, DFU Publications, "Inside the Fashion Matrix," Jul 2026 (analyst estimate, denominator unspecified)
+---
+GROWTH TEAM'S KPI: % of users who purchase ≥1 item from their wishlist within 30 days of adding it
+---
+COMPETITIVE LANDSCAPE — INDIAN FASHION E-COMMERCE (2025-26)
+---
+WHY THIS METRIC MATTER
+
+👤 FOR USERSThe pieces they already said yes to actually reach their wardrobe — not just sit in a saved list.
+
+🏷️ FOR BRANDSItems shoppers already chose finally convert — real demand closed, not re-earned from scratch with a new discount.
+
+📈 FOR MYNTRARevenue from interest it already has — no new ad spend, no new discount, just closing what's already open.
+
+---
+
+---
+
+AFTER DEDUPLICATE
+---
+
+REVIEW EXTRACTED
+---
+
+CLEANED & ANALYSED
+---
+Youtube Comments
+---
+PLAY STORE
+---
+REDDIT
+---
+APP STORE
+---
+HOW THE ENGINE WORKS
+---
+Data Sources
+
+APP Store
+
+Play Store
+
+YouTube
+
+Reddit
+ 
+---
+COLLECT 
+Collect from 4 public Sources
+---
+CLEAN
+Raw data -> Cleaned data
+---
+AI TAGGING
+LLM classifies the verbatism 
+---
+DASHBOARD
+Tagged clusters with verbatim evidence
+---
+AGGREGATE
+
+
+---
+ASK ASSISTANT
+Grounded answer from reviews only
+---
+
+
+
+
+WHAT IS DISCOVERY ENGINE SAYS? 
+
+The wishlist captures desire, not commitment.Saving an item can mean high intent, comparison, future use, price monitoring, or inspiration.
+The friction shifts from discovery to confidence.Fit, fabric and real-world product uncertainty emerge as key questions before users commit.
+The opportunity is to close the confidence gap at the wishlist → decision moment.Help users answer “Is this right for me?” before they postpone the purchase.
+
+
+
+
+---
+
+---
+HOW THE DISCOVERY ENGINE LOOKS?
+---
+
+SEGMENT 1 
+HIGH WISHLIST USAGE+ LOW CONVERSION
+"I want it, but I'm not confident enough.“
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+SEGMENT 3
+LOW/NON WISHLIST USERS
+"Wishlist isn't central to their journey.“
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+SEGMENT 2
+HIGH WISHLIST USAGE+ HIGH CONVERSION
+"What are they doing differently?“
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+Who are they?
+Wishlist items regularly and repeatedly, don't delete them.
+Rarely complete a purchase from what they save.
+Sit inside the North Star's denominator (they have wishlist activity) but outside its numerator (they don't convert).
+Current Behaviour
+Adds items to wishlist, opens it repeatedly over days or weeks.
+Compares it against similar options, sometimes checks reviews.
+Leaves the item wishlisted — no purchase, no deletion
+
+---
+
+---
+Who are They?
+Also wishlist heavily — same volume of intent as Segment 1.
+But convert at a meaningfully higher rate.
+Studying them tells us what already resolves the confidence gap, without us having to guess.
+Current Behaviour
+Wishlists at the same rate as Segment 1.
+Returns to the item once, sometimes twice  then decides.
+
+
+
+
+---
+Who are they?
+Rarely use the wishlist at all, regardless of whether they convert.
+Buy directly or browse without saving.
+Current Behaviour
+Buys directly, or browses without saving
+Uses wishlist rarely, if at all
+Doesn't treat it as part of their decision process
+
+---
+Biggest Pain Point: ⚠️ The last confidence check never happens. So the decision just stays open.
+---
+
+Why Not Selected: Blocker sits before the wishlist, not after. No wishlist means nothing to convert — outside the North Star entirely.
+
+---
+
+Why Not Selected: Already converts well — not the problem, the benchmark. Their behavior shows the fix, not the gap. Used for comparison, not investigation.
+
+---
+WHY THIS SEGMENT
+---
+Already active, not converting. Inside the metric's denominator, outside its numerator — every case we resolve moves it directly..
+
+
+
+---
+Largest signal in the data. Fit, fabric, and photo-reality doubt — the engine's top 3 themes — sit exactly here.
+---
+Trust already exists. They save and return often enough to prove the brand isn't the block — the decision is.
+---
+Highest business impact. Converts demand already generated. No new spend, no discount — just closing what's already open.
+---
+
+WHAT IS THE TRUE PROBLEM?
+
+
+
+
+
+
+
+
+
+
+
+
+---
+WHY SHOULD WE SOLVE THIS PROBLEM?
+
+
+
+
+
+
+
+
+
+
+---
+HOW DO WE KNOW IT’S REAL?
+
+
+
+
+
+
+
+
+
+
+
+---
+WHO IS FACING THE PROBLEM?
+
+
+
+
+
+
+
+
+
+
+
+---
+WHAT IS SOLVING THIS PROBLEM?
+
+
+
+
+
+
+
+
+---
+                  FOR USERS
+---
+
+---
+
+---
+
+---
+Prioritize the Solution

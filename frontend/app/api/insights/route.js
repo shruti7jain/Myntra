@@ -36,14 +36,15 @@ export async function GET() {
     const totalRawAnalyzed = platformCountResults.reduce((sum, p) => sum + p.count, 0);
 
     const CANONICAL_LABELS = {
-      fabric_quality_ambiguity: 'Fabric Quality & Tactile Ambiguity',
-      visual_reality_discrepancy: 'Product Photo vs. Reality Mismatch',
-      fit_sizing_anxiety: 'Fit & Sizing Inconsistency',
-      occasion_timing_delay: 'Occasion Timing & Postponement',
-      styling_pairing_doubt: 'Styling & Wardrobe Pairing Uncertainty',
-      choice_paralysis_shortlist: 'Choice Overload & Comparison Fatigue',
-      social_validation_delay: 'Social Validation & Peer Opinion Delay',
-      unrelated_other: 'Unrelated / Noise',
+      fit_sizing_anxiety: 'Fit & Sizing Uncertainty',
+      fabric_quality_ambiguity: 'Fabric / Quality Uncertainty',
+      visual_reality_discrepancy: 'Photo → Reality Uncertainty',
+      occasion_timing_delay: 'Occasion / Timing / Postponement',
+      styling_pairing_doubt: 'Styling / Pairing Uncertainty',
+      choice_paralysis_shortlist: 'Comparison / Choice Overload',
+      social_validation_delay: 'Social / External Validation',
+      price_deal_timing: 'Price / Deal Timing',
+      unrelated_other: 'Out-of-Scope / Noise',
     };
 
     const themeRows = (insightsData || []).filter((row) => row && row.theme);
@@ -55,6 +56,9 @@ export async function GET() {
     if (noiseCount === 0 && totalRawAnalyzed > 0) {
       noiseCount = Math.max(0, totalRawAnalyzed - totalFrictionCount);
     }
+
+    const goalRelevantSignals = totalFrictionCount;
+    const filteredOutOfScope = noiseCount;
 
     const insights = nonNoiseRows
       .map((row) => {
@@ -114,9 +118,10 @@ export async function GET() {
       intents,
       total_raw_analyzed: totalRawAnalyzed,
       total_friction_count: totalFrictionCount,
+      goal_relevant_signals: goalRelevantSignals,
       noise_count: noiseCount,
+      filtered_out_of_scope: filteredOutOfScope,
       total_intent_signals: totalIntentSignals,
-      methodology: 'Public user conversations were AI-classified for purchase-related friction. Wishlist intent is inferred from relevant signals and does not represent observed Wishlist → Purchase behaviour.',
       source_mix: platforms.map((p) => `${p.name}: ${p.count}`).join(', '),
       updated_at: new Date().toISOString(),
     });
