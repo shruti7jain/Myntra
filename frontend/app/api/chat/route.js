@@ -150,19 +150,19 @@ STRICT RULES:
       const socialCount = socialTheme ? socialTheme.mention_count : 0;
       const socialPct = socialTheme ? socialTheme.pct_of_total : 0;
       reply =
-        `DATA FINDING\nSocial validation / peer opinion delay is ${socialCount} mention${socialCount === 1 ? '' : 's'} in the current corpus, which is ${socialPct}% of friction signals.\n\n` +
-        (socialTheme ? `Customer verbatim: "${getQuote(socialTheme) || 'N/A'}"\n\n` : '') +
-        `INFERENCE\nThis does not provide strong evidence that users leave Myntra for Reddit or YouTube as a primary conversion path in the current dataset.\n\n` +
-        `HYPOTHESIS\nIf a future corpus shows stronger direct evidence, it would be a separate external-validation hypothesis rather than a core friction signal.`;
+        `What the current dataset shows\n- Social validation / peer opinion delay: ${socialCount} mention${socialCount === 1 ? '' : 's'}\n- Share of friction signals: ${socialPct}%\n\n` +
+        (socialTheme ? `Evidence: "${getQuote(socialTheme) || 'N/A'}"\n\n` : '') +
+        `What it means\n- This does not provide strong evidence that Reddit or YouTube is the primary conversion path in the current dataset.\n\n` +
+        `Next step\n- If a future corpus shows stronger direct evidence, treat it as a separate external-validation hypothesis rather than a core friction signal.`;
 
     } else if (queryLower.includes('ethnic') || queryLower.includes('kurti') || queryLower.includes('kurta')) {
       if (fitTheme) {
         const q = getQuote(fitTheme);
         reply =
-          `DATA FINDING\n${fitTheme.theme_label} — ${fitTheme.mention_count} mentions (${fitTheme.pct_of_total}% of friction signals).\n\n` +
-          (q ? `Customer verbatim: "${q}"\n\n` : '') +
-          `INFERENCE\nThis is a strong wishlist-relevant uncertainty signal in the current corpus.\n\n` +
-          `HYPOTHESIS\nFit confidence may be an important blocker in the saved-item decision moment, but this should be validated with direct user research.`;
+          `What the current dataset shows\n- ${fitTheme.theme_label}\n- Mentions: ${fitTheme.mention_count} (${fitTheme.pct_of_total}% of friction signals)\n\n` +
+          (q ? `Evidence: "${q}"\n\n` : '') +
+          `What it means\n- This is a strong wishlist-relevant uncertainty signal in the current corpus.\n\n` +
+          `Next step\n- Fit confidence may be a blocker in the saved-item decision moment, but this should be validated with direct user research.`;
       } else {
         reply = 'This is not captured in the current dataset.';
       }
@@ -171,10 +171,10 @@ STRICT RULES:
       if (fabricTheme) {
         const q = getQuote(fabricTheme);
         reply =
-          `DATA FINDING\n${fabricTheme.theme_label} — ${fabricTheme.mention_count} mentions (${fabricTheme.pct_of_total}% of friction signals).\n\n` +
-          (q ? `Customer verbatim: "${q}"\n\n` : '') +
-          `INFERENCE\nFabric uncertainty appears to reduce confidence before purchase.\n\n` +
-          `HYPOTHESIS\nMaterial confidence may be a discovery-stage opportunity area, but it is not yet a confirmed solution path.`;
+          `What the current dataset shows\n- ${fabricTheme.theme_label}\n- Mentions: ${fabricTheme.mention_count} (${fabricTheme.pct_of_total}% of friction signals)\n\n` +
+          (q ? `Evidence: "${q}"\n\n` : '') +
+          `What it means\n- Fabric uncertainty appears to reduce confidence before purchase.\n\n` +
+          `Next step\n- Material confidence may be a discovery-stage opportunity area, but it is not yet a confirmed solution path.`;
       } else {
         reply = 'This is not captured in the current dataset.';
       }
@@ -183,10 +183,10 @@ STRICT RULES:
       if (photoTheme) {
         const q = getQuote(photoTheme);
         reply =
-          `DATA FINDING\n${photoTheme.theme_label} — ${photoTheme.mention_count} mentions (${photoTheme.pct_of_total}% of friction signals).\n\n` +
-          (q ? `Customer verbatim: "${q}"\n\n` : '') +
-          `INFERENCE\nPhoto-to-reality mismatch is a recurring confidence signal in the discovery corpus.\n\n` +
-          `HYPOTHESIS\nThis may represent a meaningful product-confidence gap, but the public data cannot prove the final product response.`;
+          `What the current dataset shows\n- ${photoTheme.theme_label}\n- Mentions: ${photoTheme.mention_count} (${photoTheme.pct_of_total}% of friction signals)\n\n` +
+          (q ? `Evidence: "${q}"\n\n` : '') +
+          `What it means\n- Photo-to-reality mismatch is a recurring confidence signal in the discovery corpus.\n\n` +
+          `Next step\n- This may represent a meaningful product-confidence gap, but the public data cannot prove the final product response.`;
       } else {
         reply = 'This is not captured in the current dataset.';
       }
@@ -195,20 +195,19 @@ STRICT RULES:
       if (fitTheme) {
         const q = getQuote(fitTheme);
         reply =
-          `DATA FINDING\n${fitTheme.theme_label} — ${fitTheme.mention_count} mentions (${fitTheme.pct_of_total}% of friction signals).\n\n` +
-          (q ? `Customer verbatim: "${q}"\n\n` : '') +
-          `INFERENCE\nFit uncertainty is the strongest goal-relevant signal in the current discovery corpus.\n\n` +
-          `HYPOTHESIS\nThis suggests that confidence at the saved-item decision stage is a promising discovery opportunity, but the public data does not confirm the final solution.`;
+          `What the current dataset shows\n- ${fitTheme.theme_label}\n- Mentions: ${fitTheme.mention_count} (${fitTheme.pct_of_total}% of friction signals)\n\n` +
+          (q ? `Evidence: "${q}"\n\n` : '') +
+          `What it means\n- Fit uncertainty is the strongest goal-relevant signal in the current discovery corpus.\n\n` +
+          `Next step\n- This suggests that confidence at the saved-item decision stage is a promising discovery opportunity, but the public data does not confirm the final solution.`;
       } else {
         reply = 'This is not captured in the current dataset.';
       }
 
     } else if (queryLower.includes('intent') || queryLower.includes('bookmark') || queryLower.includes('wishlist use') || queryLower.includes('saving')) {
       reply =
-        `DATA FINDING\nWishlist intent is estimated from relevant public conversation signals, not observed checkout behaviour.\n\n` +
-        `The engine distinguishes between high-intent blocked decisions and status-based bookmarking.\n\n` +
-        `INFERENCE\nThe most conversion-relevant group is users who express high intent but remain blocked by uncertainty.\n\n` +
-        `HYPOTHESIS\nThis should be validated with wishlist-to-purchase behavioural data before drawing stronger conversion conclusions.`;
+        `What the current dataset shows\n- Wishlist intent is estimated from relevant public conversation signals, not observed checkout behavior.\n- The engine distinguishes between high-intent blocked decisions and status-based bookmarking.\n\n` +
+        `What it means\n- The most conversion-relevant group is users who express high intent but remain blocked by uncertainty.\n\n` +
+        `Next step\n- Validate this with wishlist-to-purchase behavioral data before drawing stronger conversion conclusions.`;
 
     } else {
       const topList = frictionInsights
@@ -223,9 +222,9 @@ STRICT RULES:
         .join('\n\n');
 
       reply =
-        `DATA FINDING\nTop friction themes in the current corpus:\n\n` +
+        `Top friction themes in the current corpus\n\n` +
         topList +
-        `\n\nINFERENCE\nThese themes indicate likely decision blockers in the available public conversation data, not universal user behaviour across all Myntra shoppers.`;
+        `\n\nWhat it means\n- These themes indicate likely decision blockers in the available public conversation data, not universal user behavior across all Myntra shoppers.`;
     }
 
     return NextResponse.json({ reply: normalizeDisplayText(reply) });
