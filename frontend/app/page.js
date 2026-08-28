@@ -92,7 +92,6 @@ export default function MyntraDiscoveryEngine() {
   const [syncing, setSyncing] = useState(false);
   const [showAllQuotes, setShowAllQuotes] = useState(false);
   const [lastSynced, setLastSynced] = useState(null);
-  const [lastFetchedAt, setLastFetchedAt] = useState(null);
   const [themes, setThemes] = useState([]);
   const [intents, setIntents] = useState([]);
   const [platforms, setPlatforms] = useState([
@@ -122,7 +121,6 @@ export default function MyntraDiscoveryEngine() {
         if (d.total_raw_analyzed) setTotalAnalyzed(d.total_raw_analyzed);
         if (d.insights?.length > 0) setDbInsights(d.insights);
         if (d.intents?.length > 0) setIntents(d.intents);
-        if (d.updated_at) setLastFetchedAt(new Date(d.updated_at).toLocaleString());
       } catch {}
     })();
   }, []);
@@ -141,7 +139,6 @@ export default function MyntraDiscoveryEngine() {
         setDbInsights(d.insights);
         setThemes(d.insights);
       }
-      if (d.updated_at) setLastFetchedAt(new Date(d.updated_at).toLocaleString());
       setLastSynced(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch {}
     setSyncing(false);
@@ -274,11 +271,6 @@ export default function MyntraDiscoveryEngine() {
             <span className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-[#fff0f3] text-[#ff3f6c] border border-[#ffcdd7] flex items-center gap-1.5 flex-shrink-0">
               <Target className="w-3 h-3" /> No Monetary Incentives
             </span>
-            {lastFetchedAt && (
-              <span className="text-[9px] text-[#94969f] font-medium whitespace-nowrap">
-                Data last fetched: {lastFetchedAt}
-              </span>
-            )}
           </div>
         </header>
 
@@ -376,17 +368,17 @@ export default function MyntraDiscoveryEngine() {
                     <p className="text-[9px] text-[#94969f] mb-2 -mt-1 italic">AI-estimated from {totalFrictionCount ? totalFrictionCount.toLocaleString() : 'live'} classified wishlist signals</p>
                     <div className="space-y-2">
                       {intents && intents.length > 0 ? (
-                        intents.map((r, i) => (
-                          <div key={i} className="flex items-center justify-between text-[10px]">
-                            <div className="flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#ff3f6c]" style={{ opacity: Math.max(0.2, 1 - i * 0.15) }} />
-                              <span className="text-[#535766]">{r.label}</span>
+                        intents
+                          .filter((r) => Number(r.count || 0) > 0)
+                          .map((r, i) => (
+                            <div key={i} className="flex items-center justify-between text-[10px]">
+                              <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#ff3f6c]" style={{ opacity: Math.max(0.2, 1 - i * 0.15) }} />
+                                <span className="text-[#535766]">{r.label}</span>
+                              </div>
+                              <span className="font-black text-[#ff3f6c]">{r.pct}%</span>
                             </div>
-                            <span className="font-black text-[#ff3f6c]">
-                              {r.has_evidence ? `${r.pct}%` : '0% (0 records)'}
-                            </span>
-                          </div>
-                        ))
+                          ))
                       ) : (
                         <p className="text-[10px] text-[#94969f]">Loading intent breakdown...</p>
                       )}
@@ -406,7 +398,7 @@ export default function MyntraDiscoveryEngine() {
                     onClick={() => setShowAllQuotes(!showAllQuotes)}
                     className="text-[10px] font-bold text-[#ff3f6c] bg-[#fff0f3] hover:bg-[#ffe4e9] px-3 py-1.5 rounded-lg transition-colors border border-[#ffcdd7]"
                   >
-                    {showAllQuotes ? 'Collapse view' : 'Show all cleaned Quotes'}
+                    {showAllQuotes ? 'Hide all comments' : 'Show all 101 comments'}
                   </button>
                 </div>
                 <div className={`p-5 transition-all duration-300 ${showAllQuotes ? 'max-h-[500px] overflow-y-auto' : ''}`}>
