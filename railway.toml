@@ -1,0 +1,7 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "python scripts/run_all_ingestion.py && python scripts/normalization/process_insights.py"
+restartPolicyType = "on_failure"
+cronSchedule = "0 0 * * *"
