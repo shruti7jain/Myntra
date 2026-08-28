@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
 
+const normalizeText = (value) => {
+  if (typeof value !== 'string') return value;
+
+  return value
+    .replace(/\u00a0/g, ' ')
+    .replace(/[\u00C2\u00E2]\u2019/g, "'")
+    .replace(/[\u00C2\u00E2]\u2018/g, "'")
+    .replace(/[\u00C2\u00E2]\u201C/g, '"')
+    .replace(/[\u00C2\u00E2]\u201D/g, '"')
+    .replace(/[\u00C2\u00E2]\u2013/g, '-')
+    .replace(/[\u00C2\u00E2]\u2014/g, '-')
+    .replace(/[\u00C2\u00E2]/g, '')
+    .replace(/\u00C3/g, 'A');
+};
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -64,11 +79,12 @@ export async function GET() {
       .map((row) => {
         const count = Number(row.mention_count) || 0;
         const pctExact = totalFrictionCount > 0 ? (count / totalFrictionCount) * 100 : 0;
+        const label = normalizeText(row.theme_label || CANONICAL_LABELS[row.theme]);
         return {
           id: row.theme,
-          theme: row.theme,
-          theme_label: row.theme_label || CANONICAL_LABELS[row.theme],
-          label: row.theme_label || CANONICAL_LABELS[row.theme],
+          theme: normalizeText(row.theme),
+          theme_label: label,
+          label,
           mention_count: count,
           count,
           pct: Number(pctExact.toFixed(1)),

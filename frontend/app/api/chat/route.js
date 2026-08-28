@@ -2,6 +2,21 @@ import Groq from 'groq-sdk';
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
 
+const normalizeDisplayText = (value) => {
+  if (typeof value !== 'string') return value;
+
+  return value
+    .replace(/\u00a0/g, ' ')
+    .replace(/[\u00C2\u00E2]\u2019/g, "'")
+    .replace(/[\u00C2\u00E2]\u2018/g, "'")
+    .replace(/[\u00C2\u00E2]\u201C/g, '"')
+    .replace(/[\u00C2\u00E2]\u201D/g, '"')
+    .replace(/[\u00C2\u00E2]\u2013/g, '-')
+    .replace(/[\u00C2\u00E2]\u2014/g, '-')
+    .replace(/[\u00C2\u00E2]/g, '')
+    .replace(/\u00C3/g, 'A');
+};
+
 export async function POST(req) {
   try {
     const { message } = await req.json();
@@ -96,7 +111,7 @@ STRICT RULES:
 
         const reply = completion.choices[0]?.message?.content;
         if (reply && reply.trim().length > 0) {
-          return NextResponse.json({ reply });
+          return NextResponse.json({ reply: normalizeDisplayText(reply) });
         }
       } catch (err) {
         console.warn('Groq API call failed in chat route:', err.message);
@@ -213,7 +228,7 @@ STRICT RULES:
         `\n\nINFERENCE\nThese themes indicate likely decision blockers in the available public conversation data, not universal user behaviour across all Myntra shoppers.`;
     }
 
-    return NextResponse.json({ reply });
+    return NextResponse.json({ reply: normalizeDisplayText(reply) });
 
   } catch (error) {
     console.error('Chat API error:', error);

@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
 
+const normalizeText = (value) => {
+  if (typeof value !== 'string') return value;
+
+  return value
+    .replace(/\u00a0/g, ' ')
+    .replace(/[\u00C2\u00E2]\u2019/g, "'")
+    .replace(/[\u00C2\u00E2]\u2018/g, "'")
+    .replace(/[\u00C2\u00E2]\u201C/g, '"')
+    .replace(/[\u00C2\u00E2]\u201D/g, '"')
+    .replace(/[\u00C2\u00E2]\u2013/g, '-')
+    .replace(/[\u00C2\u00E2]\u2014/g, '-')
+    .replace(/[\u00C2\u00E2]/g, '')
+    .replace(/\u00C3/g, 'A');
+};
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
@@ -42,9 +57,9 @@ export async function GET(request) {
       if (plat === 'youtube') plat = 'YouTube';
 
       return {
-        text: v.text,
-        platform: plat,
-        theme: CANONICAL_LABELS[v.theme] || v.theme
+        text: normalizeText(v.text),
+        platform: normalizeText(plat),
+        theme: normalizeText(CANONICAL_LABELS[v.theme] || v.theme)
       };
     });
 
