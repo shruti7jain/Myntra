@@ -6,15 +6,25 @@ const normalizeDisplayText = (value) => {
   if (typeof value !== 'string') return value;
 
   return value
+    .replace(/\r/g, '')
     .replace(/\u00a0/g, ' ')
-    .replace(/[\u00C2\u00E2]\u2019/g, "'")
-    .replace(/[\u00C2\u00E2]\u2018/g, "'")
-    .replace(/[\u00C2\u00E2]\u201C/g, '"')
-    .replace(/[\u00C2\u00E2]\u201D/g, '"')
-    .replace(/[\u00C2\u00E2]\u2013/g, '-')
-    .replace(/[\u00C2\u00E2]\u2014/g, '-')
-    .replace(/[\u00C2\u00E2]/g, '')
-    .replace(/\u00C3/g, 'A');
+    .replace(/â€™/g, '’')
+    .replace(/â€˜/g, '‘')
+    .replace(/â€œ/g, '“')
+    .replace(/â€/g, '”')
+    .replace(/â€“/g, '–')
+    .replace(/â€”/g, '—')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã¨/g, 'è')
+    .replace(/Ã¼/g, 'ü')
+    .replace(/Ã¶/g, 'ö')
+    .replace(/Ã¡/g, 'á')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã/g, 'A')
+    .replace(/Â/g, '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 };
 
 export async function POST(req) {

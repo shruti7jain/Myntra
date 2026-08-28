@@ -264,7 +264,7 @@ export default function MyntraDiscoveryEngine() {
             </h1>
             <p className="text-[10px] text-[#94969f] mt-0.5">
               {tab === 'discovery' && `${totalAnalyzed ? totalAnalyzed.toLocaleString() : '...'} public user conversations · Play Store · App Store · Reddit · YouTube`}
-              {tab === 'copilot'   && `Grounded in ${totalAnalyzed ? totalAnalyzed.toLocaleString() : '...'} VoC verbatims · Groq Llama 3.3 · Live database`}
+              {tab === 'copilot'   && `Grounded in ${totalAnalyzed ? totalAnalyzed.toLocaleString() : '...'} VoC verbatims · Live database`}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -479,7 +479,7 @@ export default function MyntraDiscoveryEngine() {
                   <Bot className="w-4 h-4 text-[#ff3f6c]" />
                   <div>
                     <p className="text-[12px] font-bold text-[#282C3F]">Myntra AI Discovery Copilot</p>
-                    <p className="text-[9px] text-[#94969f]">Groq Llama 3.3 · Grounded in {totalAnalyzed ? totalAnalyzed.toLocaleString() : 'live'} verbatims · Live database</p>
+                    <p className="text-[9px] text-[#94969f]">Grounded in {totalAnalyzed ? totalAnalyzed.toLocaleString() : 'live'} verbatims · Live database</p>
                   </div>
                 </div>
 
