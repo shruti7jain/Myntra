@@ -1,0 +1,7 @@
+{
+  "name": "myntra-frontend-root",
+  "private": true,
+  "scripts": {
+    "start": "npm install --prefix frontend && npm run build --prefix frontend && npm run start --prefix frontend"
+  }
+}

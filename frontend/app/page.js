@@ -11,7 +11,8 @@ import {
     Target
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 const OPPORTUNITIES = [
   { id: 'fit_sizing_anxiety', theme: 'fit_sizing_anxiety', label: 'Fit confidence gap', tag: 'Potential opportunity area', impact: 'High', what: 'Users appear to save products they want but hesitate because they cannot confidently predict fit before purchase.', why: 'The strongest signal in the discovery corpus is uncertainty around size and fit at the decision stage.', evidence: 'Cross-source evidence volume and repeated size-fit hesitation in public conversations.' },
   { id: 'fabric_quality_ambiguity', theme: 'fabric_quality_ambiguity', label: 'Fabric / quality uncertainty', tag: 'Potential opportunity area', impact: 'High', what: 'Material feel and visibility are not obvious from product presentation, creating uncertainty before a purchase decision.', why: 'Users often hesitate when they cannot tell whether the material will feel right or look cheap/sheer.', evidence: 'Repeat mentions of transparency, thickness, fabric feel and quality uncertainty.' },
@@ -501,7 +502,20 @@ export default function MyntraDiscoveryEngine() {
                             <span className="text-[9px] font-black text-[#94969f] uppercase tracking-wider">Myntra AI</span>
                           </div>
                         )}
-                        <div className="whitespace-pre-wrap">{m.content}</div>
+                        <div className="markdown-body">
+                          <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                              ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2" {...props} />,
+                              ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-2" {...props} />,
+                              li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                              strong: ({node, ...props}) => <strong className="font-bold" {...props} />
+                            }}
+                          >
+                            {m.content}
+                          </ReactMarkdown>
+                        </div>
                       </div>
                     </div>
                   ))}
