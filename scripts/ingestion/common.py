@@ -15,9 +15,17 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 # "add to cart worked!" matching as friction signals.
 # Uses (primary_token, context_token) pairs - BOTH must be present in text.
 # Single-token entries are standalone high-signal terms unlikely to be noise.
+#
+# AUDIT NOTE (2026-08-29): Bare "return" and "exchange" were previously the
+# top 2 matched keywords (65.4% + 9.7% = 75.2% of all ingested records) and
+# produced almost exclusively post-purchase complaint content classified as
+# unrelated_other. They have been REMOVED from this list and replaced with
+# friction-context-qualified variants that require a pre-purchase signal.
 # ---------------------------------------------------------------------------
 WISHLIST_KEYWORD_PAIRS = [
-    # Wishlist / Save behaviour
+    # -----------------------------------------------------------------------
+    # Wishlist / Save / Shortlist behaviour (direct evidence of pre-purchase intent)
+    # -----------------------------------------------------------------------
     ("wishlist", None),
     ("wish list", None),
     ("save for later", None),
@@ -26,9 +34,20 @@ WISHLIST_KEYWORD_PAIRS = [
     ("bookmark", None),
     ("buy later", None),
     ("shortlist", None),
+    ("shortlisted", None),
+    ("considering buying", None),
+    ("thinking of buying", None),
+    ("want to buy but", None),
+    ("planning to buy", None),
+    ("baad mein kharidna", None),          # Hindi: will buy later
+    ("baad mein dekhna", None),            # Hindi: will check later
+    ("kharidunga baad mein", None),        # Hindi: will buy later
 
-    # Fit & Sizing (require sizing context words)
+    # -----------------------------------------------------------------------
+    # Fit & Sizing PRE-PURCHASE uncertainty
+    # -----------------------------------------------------------------------
     ("size chart", None),
+    ("size guide", None),
     ("true to size", None),
     ("size up", None),
     ("size down", None),
@@ -39,37 +58,50 @@ WISHLIST_KEYWORD_PAIRS = [
     ("shoulder fit", None),
     ("bust size", None),
     ("waist size", None),
-    ("size guide", None),
     ("size small", None),
     ("wrong size", None),
     ("not fit", None),
     ("size issue", None),
+    ("which size", None),
+    ("what size", None),
+    ("size confusion", None),
+    ("unsure about size", None),
+    ("size mismatch", None),
 
-    # Return/Exchange (require friction context — not "hassle free returns")
-    ("had to return", None),
-    ("returned it", None),
-    ("return because", None),
-    ("exchange because", None),
-    ("return policy made me", None),
+    # -----------------------------------------------------------------------
+    # Return/Exchange — ONLY friction-context-qualified variants
+    # (Requires a pre-purchase signal; bare "return"/"exchange" removed)
+    # -----------------------------------------------------------------------
     ("afraid to return", None),
-    ("return process", None),
     ("return fear", None),
+    ("return policy made me", None),
+    ("hesitant to buy because return", None),
+    ("no return policy", None),
+    ("non-returnable", None),
 
-    # Fabric / quality hesitation
+    # -----------------------------------------------------------------------
+    # Fabric / quality PRE-PURCHASE hesitation
+    # -----------------------------------------------------------------------
     ("see through", None),
     ("see-through", None),
     ("fabric quality", None),
     ("fabric is", None),
     ("material is", None),
     ("material looks", None),
-    ("kapda", None),
+    ("kapda", None),                        # Hindi: fabric/cloth
     ("cloth quality", None),
     ("sheer fabric", None),
     ("transparent fabric", None),
     ("lining missing", None),
     ("no lining", None),
+    ("thin material", None),
+    ("cheap fabric", None),
+    ("material kaisa", None),              # Hindi: how is the material
+    ("kapda kaisa", None),                 # Hindi: how is the cloth
 
-    # Photo / Reality discrepancy
+    # -----------------------------------------------------------------------
+    # Photo / Reality discrepancy (pre-purchase fear)
+    # -----------------------------------------------------------------------
     ("different from photo", None),
     ("different from picture", None),
     ("different in real", None),
@@ -78,27 +110,71 @@ WISHLIST_KEYWORD_PAIRS = [
     ("not like image", None),
     ("misleading photo", None),
     ("looks different", None),
+    ("photo pe alag", None),               # Hindi: different from photo
+    ("image se alag", None),               # Hindi: different from image
+    ("real mein", None),                   # Hindi: in real life
 
-    # Comparison / shortlisting
+    # -----------------------------------------------------------------------
+    # Price / Deal timing (waiting for a better price — explicit pre-purchase)
+    # -----------------------------------------------------------------------
+    ("wait for sale", None),
+    ("wait for discount", None),
+    ("price drop", None),
+    ("price too high", None),
+    ("out of budget", None),
+    ("too expensive", None),
+    ("wait for offer", None),
+    ("discount pe", None),                  # Hindi: at a discount
+    ("sale mein lena", None),              # Hindi: will buy in sale
+    ("coupon chahiye", None),              # Hindi: need a coupon
+
+    # -----------------------------------------------------------------------
+    # Comparison / shortlisting (choice paralysis)
+    # -----------------------------------------------------------------------
     ("comparing", None),
     ("cant decide", None),
     ("can't decide", None),
     ("confused between", None),
     ("which one to buy", None),
+    ("dono mein se", None),               # Hindi: from both of these
+    ("ek choose karna", None),            # Hindi: choosing one
 
-    # Social validation
+    # -----------------------------------------------------------------------
+    # Social validation (seeking external opinion before buying)
+    # -----------------------------------------------------------------------
     ("asked friend", None),
     ("asked my friend", None),
     ("show my friend", None),
     ("getting opinion", None),
     ("whatsapp to decide", None),
+    ("friend se poochna", None),          # Hindi: will ask friend
+    ("family se poochna", None),          # Hindi: will ask family
 
-    # Occasion / timing hesitation
+    # -----------------------------------------------------------------------
+    # Occasion / timing hesitation (saving for a specific event)
+    # -----------------------------------------------------------------------
     ("waiting for occasion", None),
     ("waiting for wedding", None),
-    ("delivery before", None),
     ("will it arrive before", None),
     ("need it for", None),
+    ("buy for wedding", None),
+    ("buy for party", None),
+    ("saving for trip", None),
+    ("shaadi ke liye", None),             # Hindi: for the wedding
+    ("function ke liye", None),           # Hindi: for the function
+    ("event ke liye", None),              # Hindi: for the event
+
+    # -----------------------------------------------------------------------
+    # Styling / pairing uncertainty
+    # -----------------------------------------------------------------------
+    ("how to style", None),
+    ("what to pair", None),
+    ("pair with", None),
+    ("match with", None),
+    ("outfit ideas", None),
+    ("styling suggestions", None),
+    ("kya pehnu", None),                  # Hindi: what should I wear
+    ("kiske saath match", None),          # Hindi: what does it match with
 ]
 
 # Quick single-token lookup for fast early filtering
