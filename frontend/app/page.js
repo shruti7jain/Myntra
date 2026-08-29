@@ -399,7 +399,7 @@ export default function MyntraDiscoveryEngine() {
                     onClick={() => setShowAllQuotes(!showAllQuotes)}
                     className="text-[10px] font-bold text-[#ff3f6c] bg-[#fff0f3] hover:bg-[#ffe4e9] px-3 py-1.5 rounded-lg transition-colors border border-[#ffcdd7]"
                   >
-                    {showAllQuotes ? 'Hide all comments' : 'Show all 101 comments'}
+                    {showAllQuotes ? 'Hide all comments' : `Show all ${quotes.length} comments`}
                   </button>
                 </div>
                 <div className={`p-5 transition-all duration-300 ${showAllQuotes ? 'max-h-[500px] overflow-y-auto' : ''}`}>
