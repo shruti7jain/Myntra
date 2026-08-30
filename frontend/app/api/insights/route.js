@@ -81,12 +81,40 @@ export async function GET() {
       unrelated_other:            'noise',
     };
 
-    // Helper functions for on-the-fly aggregation
-    const isExcludedByRating = (platform, rating) => {
+    const hasExplicitFashionFrictionContext = (text) => {
+      if (!text) return false;
+      const tLower = text.toLowerCase();
+      
+      const isFit = ["tight", "loose", "sizing", "fit", "size chart", "wrong size", "large", "small"].some(w => tLower.includes(w));
+      const isFabric = ["fabric", "material", "stitching", "see-through", "transparent", "thin", "color fade", "colour fade", "shrink", "poor quality", "bad quality"].some(w => tLower.includes(w));
+      const isPhoto = ["photo", "reality", "different from picture", "look different", "mismatch", "image vs", "colour difference"].some(w => tLower.includes(w));
+      const isAuthenticity = ["fake", "duplicate", "copy", "counterfeit", "not genuine"].some(w => tLower.includes(w));
+      const isPrice = ["price", "expensive", "cheap", "costly", "value for money"].some(w => tLower.includes(w));
+      const isPolicy = ["non-returnable", "cannot return", "exchange option", "return request declined", "return window closed", "delivery delay"].some(w => tLower.includes(w));
+      
+      if (!(isFit || isFabric || isPhoto || isAuthenticity || isPrice || isPolicy)) {
+        return false;
+      }
+      
+      const positiveWords = ["perfect", "excellent", "amazing", "good", "satisfied", "love", "like", "awesome", "best", "smooth", "happy", "fabulous", "nice", "premium", "comfortable", "beautiful", "neat", "recommend", "great"];
+      const isPositiveText = positiveWords.some(w => tLower.includes(w)) && !["bad", "poor", "worst", "fake", "scam", "cheat", "disappointed", "tight", "loose", "wrong", "mismatch"].some(w => tLower.includes(w));
+      if (isPositiveText) {
+        return false;
+      }
+      
+      return true;
+    };
+
+    const isExcludedByRating = (platform, rating, text) => {
       if (platform === 'playstore' || platform === 'appstore') {
-        if (rating === null || rating === undefined) return true;
+        if (rating === null || rating === undefined) {
+          return !hasExplicitFashionFrictionContext(text);
+        }
         const val = parseFloat(rating);
-        if (isNaN(val) || val >= 4.0) return true;
+        if (isNaN(val)) {
+          return !hasExplicitFashionFrictionContext(text);
+        }
+        if (val >= 4.0) return true;
       } else if (rating !== null && rating !== undefined) {
         const val = parseFloat(rating);
         if (!isNaN(val) && val >= 4.0) return true;
@@ -159,7 +187,7 @@ export async function GET() {
       }
 
       // Safeguard: exclude rating >= 4 or rating = null for reviews
-      if (isExcludedByRating(platform, rating)) {
+      if (isExcludedByRating(platform, rating, text)) {
         theme = 'unrelated_other';
       }
 

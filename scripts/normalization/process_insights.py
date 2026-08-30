@@ -71,22 +71,52 @@ THEME_TO_INTENT = {
 }
 
 
-def is_excluded_by_rating(platform: str, rating) -> bool:
+def has_explicit_fashion_friction_context(text: str) -> bool:
+    if not text:
+        return False
+    t_lower = text.lower()
+    
+    # Fit & sizing
+    is_fit = any(w in t_lower for w in ["tight", "loose", "sizing", "fit", "size chart", "wrong size", "large", "small"])
+    # Fabric / Material Quality
+    is_fabric = any(w in t_lower for w in ["fabric", "material", "stitching", "see-through", "transparent", "thin", "color fade", "colour fade", "shrink", "poor quality", "bad quality"])
+    # Photo vs Reality
+    is_photo = any(w in t_lower for w in ["photo", "reality", "different from picture", "look different", "mismatch", "image vs", "colour difference"])
+    # Authenticity
+    is_authenticity = any(w in t_lower for w in ["fake", "duplicate", "copy", "counterfeit", "not genuine"])
+    # Price/Value
+    is_price = any(w in t_lower for w in ["price", "expensive", "cheap", "costly", "value for money"])
+    # Delivery/Policy block
+    is_policy = any(w in t_lower for w in ["non-returnable", "cannot return", "exchange option", "return request declined", "return window closed", "delivery delay"])
+    
+    if not (is_fit or is_fabric or is_photo or is_authenticity or is_price or is_policy):
+        return False
+        
+    # Exclude purely positive reviews
+    positive_words = ["perfect", "excellent", "amazing", "good", "satisfied", "love", "like", "awesome", "best", "smooth", "happy", "fabulous", "nice", "premium", "comfortable", "beautiful", "neat", "recommend", "great"]
+    is_positive_text = any(w in t_lower for w in positive_words) and not any(w in t_lower for w in ["bad", "poor", "worst", "fake", "scam", "cheat", "disappointed", "tight", "loose", "wrong", "mismatch"])
+    if is_positive_text:
+        return False
+        
+    return True
+
+
+def is_excluded_by_rating(platform: str, rating, text: str = "") -> bool:
     """
     Returns True if a review should be excluded from friction themes based on rating.
     - App Store & Play Store reviews must have rating < 4.
-    - If rating is null/missing/malformed for App Store & Play Store, exclude it.
+    - If rating is null/missing/malformed for App Store & Play Store, exclude it unless it has explicit fashion friction context.
     - YouTube and Reddit comments don't have ratings, so they are not excluded.
     """
     if platform in ["playstore", "appstore"]:
         if rating is None:
-            return True
+            return not has_explicit_fashion_friction_context(text)
         try:
             val = float(rating)
             if val >= 4.0:
                 return True
         except (TypeError, ValueError):
-            return True
+            return not has_explicit_fashion_friction_context(text)
     return False
 
 
@@ -290,8 +320,7 @@ def classify_text_heuristically(text: str, keyword: str) -> dict:
     price_signals = [
         "wait for sale", "wait for discount", "price drop", "price too high",
         "out of budget", "too expensive", "not affordable", "wait for offer",
-        "discount pe", "sale mein", "waiting for a deal", "sale aane par",
-        "coupon apply", "price will decrease", "budget nahi", "sale dekhna hai"
+        "coupon apply", "price will decrease", "budget"
     ]
     if any(w in t_lower or w in kw_lower for w in price_signals):
         return _make_heuristic_result("price_deal_timing", True, "price_monitoring", text)
@@ -305,7 +334,7 @@ def classify_text_heuristically(text: str, keyword: str) -> dict:
         "size chart", "size guide", "waist size", "size small", "wrong size",
         "not fit for", "not fitting", "does not fit me", "doesn't fit",
         "size mismatch", "size issue", "too tight", "too loose",
-        "too small", "too large", "tight fit", "loose fit", "small size", "large size",
+        "too small", "too large", "tight fit", "loose fit", "small size", "large size", "fitting", "fit"
     ]
     if any(w in t_lower or w in kw_lower for w in fit_signals):
         return _make_heuristic_result("fit_sizing_anxiety", True, "high_intent_blocked", text)
@@ -317,7 +346,7 @@ def classify_text_heuristically(text: str, keyword: str) -> dict:
         "see through", "see-through", "fabric quality", "fabric is", "material is",
         "kapda", "cloth quality", "sheer fabric", "transparent", "lining missing",
         "no lining", "thin material", "poor quality material", "cheap fabric",
-        "material looks", "kapda kaisa", "kaisi quality", "material kaisa",
+        "material looks", "kapda kaisa", "kaisi quality", "material kaisa", "fabric", "material"
     ]
     if any(w in t_lower or w in kw_lower for w in fabric_signals):
         return _make_heuristic_result("fabric_quality_ambiguity", True, "high_intent_blocked", text)
@@ -329,10 +358,19 @@ def classify_text_heuristically(text: str, keyword: str) -> dict:
         "different from photo", "different from picture", "different in real",
         "color different", "colour different", "not like image", "misleading photo",
         "looks different", "not what i expected", "shade different",
-        "photo pe alag", "image se alag",
+        "photo pe alag", "image se alag", "photo", "picture", "image"
     ]
     if any(w in t_lower or w in kw_lower for w in photo_signals):
         return _make_heuristic_result("visual_reality_discrepancy", True, "high_intent_blocked", text)
+
+    # -----------------------------------------------------------------------
+    # STEP 6b: Return / Policy / Exchange (Pre-purchase / Post-purchase blocker)
+    # -----------------------------------------------------------------------
+    policy_signals = [
+        "non-returnable", "cannot return", "exchange option", "return request declined", "return window closed", "no return"
+    ]
+    if any(w in t_lower or w in kw_lower for w in policy_signals):
+        return _make_heuristic_result("occasion_timing_delay", True, "occasion_waiting", text)
 
     # -----------------------------------------------------------------------
     # STEP 7: Occasion / timing delay
@@ -529,7 +567,7 @@ def run_normalization(unprocessed_only: bool = False):
         platform = item.get("platform", "unknown")
         rating = item.get("rating")
         
-        if is_excluded_by_rating(platform, rating):
+        if is_excluded_by_rating(platform, rating, item.get("text", "")):
             updated_rows_meta.append({
                 "id": item_id,
                 "external_id": item.get("external_id"),
@@ -709,7 +747,7 @@ def _aggregate_and_upsert_insights(supabase, groq_client=None):
         rating = r.get("rating")
 
         # Apply strict check: force to unrelated_other if rating >= 4 or rating is None (for reviews)
-        if is_excluded_by_rating(platform, rating):
+        if is_excluded_by_rating(platform, rating, r.get("text", "")):
             theme_key = "unrelated_other"
 
         if theme_key not in theme_data:

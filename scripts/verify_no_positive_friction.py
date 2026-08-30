@@ -26,6 +26,36 @@ FRICTION_THEMES = {
     'price_deal_timing'
 }
 
+def has_explicit_fashion_friction_context(text: str) -> bool:
+    if not text:
+        return False
+    t_lower = text.lower()
+    
+    # Fit & sizing
+    is_fit = any(w in t_lower for w in ["tight", "loose", "sizing", "fit", "size chart", "wrong size", "large", "small"])
+    # Fabric / Material Quality
+    is_fabric = any(w in t_lower for w in ["fabric", "material", "stitching", "see-through", "transparent", "thin", "color fade", "colour fade", "shrink", "poor quality", "bad quality"])
+    # Photo vs Reality
+    is_photo = any(w in t_lower for w in ["photo", "reality", "different from picture", "look different", "mismatch", "image vs", "colour difference"])
+    # Authenticity
+    is_authenticity = any(w in t_lower for w in ["fake", "duplicate", "copy", "counterfeit", "not genuine"])
+    # Price/Value
+    is_price = any(w in t_lower for w in ["price", "expensive", "cheap", "costly", "value for money"])
+    # Delivery/Policy block
+    is_policy = any(w in t_lower for w in ["non-returnable", "cannot return", "exchange option", "return request declined", "return window closed", "delivery delay"])
+    
+    if not (is_fit or is_fabric or is_photo or is_authenticity or is_price or is_policy):
+        return False
+        
+    # Exclude purely positive reviews
+    positive_words = ["perfect", "excellent", "amazing", "good", "satisfied", "love", "like", "awesome", "best", "smooth", "happy", "fabulous", "nice", "premium", "comfortable", "beautiful", "neat", "recommend", "great"]
+    is_positive_text = any(w in t_lower for w in positive_words) and not any(w in t_lower for w in ["bad", "poor", "worst", "fake", "scam", "cheat", "disappointed", "tight", "loose", "wrong", "mismatch"])
+    if is_positive_text:
+        return False
+        
+    return True
+
+
 def check_rating_violations():
     print("=" * 75)
     # Print a neutral title without special characters to avoid Windows encoding crashes
@@ -66,8 +96,9 @@ def check_rating_violations():
         
         if platform in ["playstore", "appstore"]:
             if rating is None:
-                is_violation = True
-                reason = "Unknown rating (rating is null/missing) on review platform"
+                if not has_explicit_fashion_friction_context(text):
+                    is_violation = True
+                    reason = "Unknown rating (rating is null/missing) on review platform without explicit fashion context"
             else:
                 try:
                     val = float(rating)
@@ -75,8 +106,9 @@ def check_rating_violations():
                         is_violation = True
                         reason = f"High rating (rating={rating}) on review platform"
                 except (TypeError, ValueError):
-                    is_violation = True
-                    reason = f"Malformed rating (rating={rating}) on review platform"
+                    if not has_explicit_fashion_friction_context(text):
+                        is_violation = True
+                        reason = f"Malformed rating (rating={rating}) on review platform without explicit fashion context"
         else:
             # YouTube / Reddit comments don't have ratings naturally.
             # But if a rating is somehow set and is >= 4, flag it.

@@ -27,7 +27,7 @@ if not records:
 eligible_records = []
 excluded_records = {}
 for r in records:
-    if is_excluded_by_rating(r.get("platform"), r.get("rating")):
+    if is_excluded_by_rating(r.get("platform"), r.get("rating"), r.get("text", "")):
         excluded_records[r["id"]] = {
             "theme": "unrelated_other",
             "intent_type": "noise",
