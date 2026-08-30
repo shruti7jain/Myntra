@@ -27,16 +27,31 @@ export async function GET(request) {
 
     const { data: verbatims, error } = await supabase
       .from('raw_feedback')
-      .select('text, platform, theme')
+      .select('text, platform, theme, rating')
       .eq('is_processed', true)
       .not('theme', 'is', null)
       .neq('theme', 'unrelated_other')
-      .order('id', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .order('id', { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    const isExcludedByRating = (platform, rating) => {
+      if (platform === 'playstore' || platform === 'appstore') {
+        if (rating === null || rating === undefined) return true;
+        const val = parseFloat(rating);
+        if (isNaN(val) || val >= 4.0) return true;
+      } else if (rating !== null && rating !== undefined) {
+        const val = parseFloat(rating);
+        if (!isNaN(val) && val >= 4.0) return true;
+      }
+      return false;
+    };
+
+    // Filter in memory for maximum safety & read-time safeguard
+    const filteredVerbatims = verbatims.filter(v => !isExcludedByRating(v.platform, v.rating));
+    const paginatedVerbatims = filteredVerbatims.slice(offset, offset + limit);
 
     // Map themes to canonical labels
     const CANONICAL_LABELS = {
@@ -47,9 +62,10 @@ export async function GET(request) {
       "styling_pairing_doubt": "Styling Doubt",
       "choice_paralysis_shortlist": "Choice Paralysis",
       "social_validation_delay": "Social Validation",
+      "price_deal_timing": "Price / Deal Timing"
     };
 
-    const formattedVerbatims = verbatims.map(v => {
+    const formattedVerbatims = paginatedVerbatims.map(v => {
       let plat = v.platform;
       if (plat === 'playstore') plat = 'Play Store';
       if (plat === 'appstore') plat = 'App Store';

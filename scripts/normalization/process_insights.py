@@ -34,7 +34,7 @@ LLM_RATE_SLEEP = 4.0    # seconds between batches (conservative for rate limitin
 CANONICAL_THEMES = {
     "fit_sizing_anxiety":         "Fit & Sizing Uncertainty",
     "fabric_quality_ambiguity":   "Fabric / Quality Uncertainty",
-    "visual_reality_discrepancy": "Photo → Reality Uncertainty",
+    "visual_reality_discrepancy": "Photo -> Reality Uncertainty",
     "occasion_timing_delay":      "Occasion / Timing / Postponement",
     "styling_pairing_doubt":      "Styling / Pairing Uncertainty",
     "choice_paralysis_shortlist": "Comparison / Choice Overload",
@@ -56,6 +56,38 @@ INTENT_TYPES = {
     "no_clear_intent":           "Intent cannot be determined from text",
     "noise":                     "Unrelated to wishlist or purchase decision",
 }
+
+# Map theme to canonical intent for insights aggregation
+THEME_TO_INTENT = {
+    "fit_sizing_anxiety":         "high_intent_blocked",
+    "fabric_quality_ambiguity":   "high_intent_blocked",
+    "visual_reality_discrepancy": "high_intent_blocked",
+    "occasion_timing_delay":      "occasion_waiting",
+    "styling_pairing_doubt":      "high_intent_blocked",
+    "choice_paralysis_shortlist": "comparison_shortlisting",
+    "social_validation_delay":    "high_intent_blocked",
+    "price_deal_timing":          "price_monitoring",
+    "unrelated_other":            "noise",
+}
+
+
+def is_excluded_by_rating(platform: str, rating) -> bool:
+    """
+    Returns True if a review should be excluded from friction themes based on rating.
+    - App Store & Play Store reviews must have rating < 4.
+    - If rating is null/missing/malformed for App Store & Play Store, exclude it.
+    - YouTube and Reddit comments don't have ratings, so they are not excluded.
+    """
+    if platform in ["playstore", "appstore"]:
+        if rating is None:
+            return True
+        try:
+            val = float(rating)
+            if val >= 4.0:
+                return True
+        except (TypeError, ValueError):
+            return True
+    return False
 
 
 def get_supabase() -> Client:
@@ -400,31 +432,30 @@ def _make_heuristic_result(theme: str, is_friction: bool, intent: str, text: str
 def batch_update_raw_feedback(rows_meta: list[dict]):
     """
     Batch update raw_feedback: set theme, classification_method, is_processed=True.
-    Uses ThreadPoolExecutor for speed. Errors per row are logged but not fatal.
-    NOTE: is_processed=True is only set when BOTH theme AND classification_method are written.
+    Uses bulk upsert on primary key 'id' to act as updates. Extremely fast and avoids socket errors.
     """
-    from concurrent.futures import ThreadPoolExecutor
     supabase = get_supabase()
-
-    errors = []
-
-    def update_single_row(r):
-        try:
-            supabase.table("raw_feedback").update({
+    try:
+        records = []
+        for r in rows_meta:
+            records.append({
+                "id": r["id"],
+                "external_id": r["external_id"],
+                "platform": r["platform"],
+                "text": r["text"],
                 "theme": r["theme"],
                 "classification_method": r["classification_method"],
-                "is_processed": True,
-                # classification_failure_reason column may not exist yet — skip if so
-            }).eq("id", r["id"]).execute()
-        except Exception as e:
-            errors.append((r["id"], str(e)))
-
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        list(executor.map(update_single_row, rows_meta))
-
-    if errors:
-        print(f"[WARN] {len(errors)} row update errors (first 3): {errors[:3]}", flush=True)
-    return len(rows_meta) - len(errors)
+                "is_processed": True
+            })
+        
+        batch_size = 100
+        for i in range(0, len(records), batch_size):
+            batch = records[i:i + batch_size]
+            supabase.table("raw_feedback").upsert(batch).execute()
+        return len(rows_meta)
+    except Exception as e:
+        print(f"[ERROR] Batch update failed: {e}", flush=True)
+        return 0
 
 
 def run_normalization(unprocessed_only: bool = False):
@@ -458,12 +489,12 @@ def run_normalization(unprocessed_only: bool = False):
     offset = 0
 
     query = supabase.table("raw_feedback").select(
-        "id, platform, text, keyword_matched, url, is_processed, theme"
+        "id, platform, text, keyword_matched, url, is_processed, theme, rating, external_id"
     )
     if unprocessed_only:
         # Only fetch records that are truly unclassified
         query = supabase.table("raw_feedback").select(
-            "id, platform, text, keyword_matched, url, is_processed, theme"
+            "id, platform, text, keyword_matched, url, is_processed, theme, rating, external_id"
         ).is_("classification_method", "null")
 
     while True:
@@ -477,7 +508,43 @@ def run_normalization(unprocessed_only: bool = False):
             break
 
     total_records = len(all_records)
-    print(f"[OK] Records to classify: {total_records}", flush=True)
+    print(f"[OK] Records fetched: {total_records}", flush=True)
+
+    # ------------------------------------------------------------------
+    # Pre-process rating exclusions to save LLM tokens and ensure strict safety
+    # ------------------------------------------------------------------
+    updated_rows_meta = []
+    eligible_records = []
+    
+    classification_stats = {
+        "llm": 0,
+        "heuristic_fallback": 0,
+        "failure_reasons": {},
+        "llm_batch_successes": 0,
+        "llm_batch_failures": 0,
+    }
+    
+    for item in all_records:
+        item_id = item["id"]
+        platform = item.get("platform", "unknown")
+        rating = item.get("rating")
+        
+        if is_excluded_by_rating(platform, rating):
+            updated_rows_meta.append({
+                "id": item_id,
+                "external_id": item.get("external_id"),
+                "platform": platform,
+                "text": item.get("text", ""),
+                "theme": "unrelated_other",
+                "classification_method": "heuristic_fallback",
+                "is_processed": True,
+            })
+            classification_stats["heuristic_fallback"] += 1
+        else:
+            eligible_records.append(item)
+            
+    total_eligible = len(eligible_records)
+    print(f"[RATING FILTER] {total_records - total_eligible} records excluded by rating. {total_eligible} records eligible for classification.", flush=True)
 
     if total_records == 0:
         print("[INFO] No records to classify. Either DB is empty or all records are already processed.")
@@ -487,31 +554,14 @@ def run_normalization(unprocessed_only: bool = False):
         _aggregate_and_upsert_insights(supabase, groq_client)
         return
 
-    # ------------------------------------------------------------------
-    # 2. Classification tracking
-    # ------------------------------------------------------------------
-    classification_stats = {
-        "llm": 0,
-        "heuristic_fallback": 0,
-        "failure_reasons": {},
-        "llm_batch_successes": 0,
-        "llm_batch_failures": 0,
-    }
-
-    # ------------------------------------------------------------------
-    # 3. Build per-theme accumulators (only needed for full run)
-    # For incremental runs, we re-aggregate all after classifying new ones
-    # ------------------------------------------------------------------
-    updated_rows_meta = []
-
-    total_batches = (total_records + BATCH_SIZE - 1) // BATCH_SIZE
-    print(f"\n[CLASSIFICATION] {total_batches} batches × {BATCH_SIZE} records = {total_records} total", flush=True)
+    total_batches = (total_eligible + BATCH_SIZE - 1) // BATCH_SIZE
+    print(f"\n[CLASSIFICATION] {total_batches} batches × {BATCH_SIZE} records = {total_eligible} total eligible", flush=True)
     print(f"[CLASSIFICATION] Primary: Groq {LLM_MODEL}  |  Fallback: NLP Heuristics", flush=True)
     print("-" * 75, flush=True)
 
     for b_idx in range(total_batches):
         b_start = b_idx * BATCH_SIZE
-        batch = all_records[b_start:b_start + BATCH_SIZE]
+        batch = eligible_records[b_start:b_start + BATCH_SIZE]
         llm_batch_results = {}
         failure_reason = None
 
@@ -524,6 +574,9 @@ def run_normalization(unprocessed_only: bool = False):
                 classification_stats["failure_reasons"][reason_key] = \
                     classification_stats["failure_reasons"].get(reason_key, 0) + 1
                 print(f"[HEURISTIC FALLBACK] Batch {b_idx+1}: reason={failure_reason}", flush=True)
+                if failure_reason == "all_attempts_failed":
+                    print("[LLM DISABLED] Hitting persistent rate limits / quota issues. Disabling LLM client for this run to prevent execution delays.", flush=True)
+                    groq_client = None
             else:
                 classification_stats["llm_batch_successes"] += 1
 
@@ -546,17 +599,20 @@ def run_normalization(unprocessed_only: bool = False):
 
             updated_rows_meta.append({
                 "id": item_id,
+                "external_id": item.get("external_id"),
+                "platform": platform,
+                "text": text,
                 "theme": result["theme"],
                 "classification_method": method_used,
                 "is_processed": True,
             })
 
-        processed_so_far = min((b_idx + 1) * BATCH_SIZE, total_records)
+        processed_so_far = min((b_idx + 1) * BATCH_SIZE, total_eligible)
         llm_rate = round(classification_stats["llm"] / max(processed_so_far, 1) * 100, 1)
         print(
-            f"  Batch {b_idx+1:>4}/{total_batches} | {processed_so_far:>5}/{total_records} records | "
+            f"  Batch {b_idx+1:>4}/{total_batches} | {processed_so_far:>5}/{total_eligible} records | "
             f"LLM: {classification_stats['llm']} ({llm_rate}%) | "
-            f"Heuristic: {classification_stats['heuristic_fallback']}",
+            f"Heuristic: {classification_stats['heuristic_fallback'] - (total_records - total_eligible)}",
             flush=True
         )
 
@@ -649,11 +705,17 @@ def _aggregate_and_upsert_insights(supabase, groq_client=None):
 
     for r in classified:
         theme_key = r.get("theme")
+        platform = r.get("platform", "unknown")
+        rating = r.get("rating")
+
+        # Apply strict check: force to unrelated_other if rating >= 4 or rating is None (for reviews)
+        if is_excluded_by_rating(platform, rating):
+            theme_key = "unrelated_other"
+
         if theme_key not in theme_data:
             continue
 
         method = r.get("classification_method", "heuristic_fallback")
-        platform = r.get("platform", "unknown")
         url = r.get("url", "")
         text = r.get("text", "")
 
@@ -662,6 +724,11 @@ def _aggregate_and_upsert_insights(supabase, groq_client=None):
             theme_data[theme_key]["llm_count"] += 1
         else:
             theme_data[theme_key]["heuristic_count"] += 1
+
+        # Populate intent breakdown based on the mapped theme
+        intent = THEME_TO_INTENT.get(theme_key, "no_clear_intent")
+        if intent in theme_data[theme_key]["intent_breakdown"]:
+            theme_data[theme_key]["intent_breakdown"][intent] += 1
 
         # Category from text (lightweight re-classification for breakdown)
         t_lower = text.lower()
@@ -716,6 +783,7 @@ def _aggregate_and_upsert_insights(supabase, groq_client=None):
             "sample_quotes": sample_quotes_plain,
             "sample_quotes_attributed": sample_quotes_attributed,
             "segment_breakdown": data["segment_breakdown"],
+            "intent_breakdown": data["intent_breakdown"],
             "trend": "stable",
             "updated_at": now_ts,
         }
@@ -734,7 +802,7 @@ def _aggregate_and_upsert_insights(supabase, groq_client=None):
                 core_row = {k: v for k, v in row.items()
                             if k in ["theme", "theme_label", "mention_count", "pct_of_total",
                                      "sample_quotes", "sample_quotes_attributed",
-                                     "segment_breakdown", "trend", "updated_at"]}
+                                     "segment_breakdown", "intent_breakdown", "trend", "updated_at"]}
                 supabase.table("insights").upsert(core_row, on_conflict="theme").execute()
             except Exception as e2:
                 print(f"[ERROR] Failed to upsert theme={row.get('theme')}: {e2}", flush=True)
@@ -760,7 +828,7 @@ def _aggregate_and_upsert_insights(supabase, groq_client=None):
     print(f"  Total unclassified     : {len(unclassified):,}")
     print(f"  Total                  : {total_friction + noise_count + len(unclassified):,} "
           f"(raw_feedback = {total_records:,})")
-    match = "✓ MATCH" if total_friction + noise_count + len(unclassified) == total_records else "✗ MISMATCH"
+    match = "MATCH" if total_friction + noise_count + len(unclassified) == total_records else "MISMATCH"
     print(f"  Reconciliation         : {match}")
     print(f"  Last classified at     : {now_ts}")
     print("-" * 75 + "\n")

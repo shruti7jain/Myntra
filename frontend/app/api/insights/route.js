@@ -20,18 +20,30 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    // -------------------------------------------------------------------------
-    // READ INSIGHTS TABLE
-    // The insights table is populated by process_insights.py and contains
-    // pre-aggregated mention counts per theme. All counts (friction, noise,
-    // total) come from this single snapshot to ensure internal consistency.
-    // -------------------------------------------------------------------------
-    const { data: insightsData, error: insightsErr } = await supabase
+    // 1. Fetch metadata from insights table to get last_classified_at
+    const { data: insightsMeta } = await supabase
       .from('insights')
-      .select('*');
+      .select('updated_at')
+      .limit(1);
+    const lastClassifiedAt = insightsMeta?.[0]?.updated_at || new Date().toISOString();
 
-    if (insightsErr) {
-      return NextResponse.json({ error: insightsErr.message }, { status: 500 });
+    // 2. Fetch all raw feedback to perform dynamic, clean aggregation with hard rating exclusion filters
+    let allRecords = [];
+    let offset = 0;
+    const limit = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from('raw_feedback')
+        .select('id, platform, theme, rating, text, keyword_matched, url')
+        .range(offset, offset + limit - 1);
+      
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      if (!data || data.length === 0) break;
+      allRecords = allRecords.concat(data);
+      offset += limit;
+      if (data.length < limit) break;
     }
 
     const CANONICAL_LABELS = {
@@ -57,113 +69,167 @@ export async function GET() {
       'price_deal_timing',
     ]);
 
-    const themeRows = (insightsData || []).filter((row) => row && row.theme);
-    const noiseRow = themeRows.find((row) => row.theme === 'unrelated_other');
-    const nonNoiseRows = themeRows.filter((row) => FRICTION_THEME_KEYS.has(row.theme));
-
-    // -------------------------------------------------------------------------
-    // CONSISTENT POPULATION: all metrics derived from insights table snapshot.
-    // friction_count + noise_count + unclassified_count = total_raw_analyzed
-    // -------------------------------------------------------------------------
-    const totalFrictionCount = nonNoiseRows.reduce(
-      (sum, row) => sum + (Number(row.mention_count) || 0), 0
-    );
-    const noiseCount = Number(noiseRow?.mention_count || 0);
-
-    // Read last_classified_at from any theme row (they all share the same run timestamp)
-    const anyRow = themeRows[0] || {};
-    const lastClassifiedAt = anyRow.last_classified_at || anyRow.updated_at || null;
-
-    // -------------------------------------------------------------------------
-    // PLATFORM COUNTS (from raw_feedback — for source mix display only)
-    // These are live and may differ from insights snapshot if ingestion ran
-    // without a subsequent normalization. They are surfaced as source_mix only,
-    // NOT used to compute total_raw_analyzed.
-    // -------------------------------------------------------------------------
-    const platformNames = ['playstore', 'appstore', 'reddit', 'youtube'];
-    const PLATFORM_DISPLAY = {
-      playstore: 'Play Store',
-      appstore: 'App Store',
-      reddit: 'Reddit',
-      youtube: 'YouTube',
+    const THEME_TO_INTENT = {
+      fit_sizing_anxiety:         'high_intent_blocked',
+      fabric_quality_ambiguity:   'high_intent_blocked',
+      visual_reality_discrepancy: 'high_intent_blocked',
+      occasion_timing_delay:      'occasion_waiting',
+      styling_pairing_doubt:      'high_intent_blocked',
+      choice_paralysis_shortlist: 'comparison_shortlisting',
+      social_validation_delay:    'high_intent_blocked',
+      price_deal_timing:          'price_monitoring',
+      unrelated_other:            'noise',
     };
 
-    const platformCountResults = await Promise.all(
-      platformNames.map(async (plat) => {
-        const { count } = await supabase
-          .from('raw_feedback')
-          .select('*', { count: 'exact', head: true })
-          .eq('platform', plat);
-        return { name: PLATFORM_DISPLAY[plat], count: count || 0 };
-      })
-    );
+    // Helper functions for on-the-fly aggregation
+    const isExcludedByRating = (platform, rating) => {
+      if (platform === 'playstore' || platform === 'appstore') {
+        if (rating === null || rating === undefined) return true;
+        const val = parseFloat(rating);
+        if (isNaN(val) || val >= 4.0) return true;
+      } else if (rating !== null && rating !== undefined) {
+        const val = parseFloat(rating);
+        if (!isNaN(val) && val >= 4.0) return true;
+      }
+      return false;
+    };
 
-    const platforms = platformCountResults.sort((a, b) => b.count - a.count);
-    // Live raw count (may be ahead of insights if normalization hasn't run yet)
-    const liveRawCount = platformCountResults.reduce((sum, p) => sum + p.count, 0);
+    const getCategory = (text) => {
+      if (!text) return 'General Fashion';
+      const lower = text.toLowerCase();
+      if (["kurti", "kurta", "saree", "ethnic", "lehenga", "suit", "dupatta", "salwar", "anouk"].some(w => lower.includes(w))) {
+        return 'Ethnic Wear';
+      }
+      if (["dress", "gown", "maxi", "bodycon"].some(w => lower.includes(w))) {
+        return 'Dresses';
+      }
+      if (["shoe", "sneaker", "heel", "sandal", "footwear", "boots", "loafer"].some(w => lower.includes(w))) {
+        return 'Footwear';
+      }
+      if (["jean", "top", "shirt", "tshirt", "t-shirt", "jacket", "trousers", "denim", "blazer", "skirt"].some(w => lower.includes(w))) {
+        return 'Western Wear';
+      }
+      return 'General Fashion';
+    };
 
-    // Insights-based total (consistent with friction and noise counts)
-    const totalRawAnalyzed = totalFrictionCount + noiseCount;
+    // Aggregation maps
+    const themeCounts = {};
+    const themeQuotes = {};
+    const themeSegments = {};
+    const platformCounts = { playstore: 0, appstore: 0, reddit: 0, youtube: 0 };
 
-    // Unclassified = live count that hasn't been reflected in insights yet
-    const unclassifiedCount = Math.max(0, liveRawCount - totalRawAnalyzed);
-
-    // Data is stale if last classification is > 24 hours ago
-    const dataIsCurrent = lastClassifiedAt
-      ? (Date.now() - new Date(lastClassifiedAt).getTime()) < 24 * 60 * 60 * 1000
-      : false;
-
-    // -------------------------------------------------------------------------
-    // BUILD INSIGHT OBJECTS FOR FRICTION THEMES
-    // -------------------------------------------------------------------------
-    const insights = nonNoiseRows
-      .map((row) => {
-        const count = Number(row.mention_count) || 0;
-        const pctExact = totalFrictionCount > 0 ? (count / totalFrictionCount) * 100 : 0;
-        const label = normalizeText(row.theme_label || CANONICAL_LABELS[row.theme]);
-        return {
-          id: row.theme,
-          theme: normalizeText(row.theme),
-          theme_label: label,
-          label,
-          mention_count: count,
-          count,
-          pct: Number(pctExact.toFixed(1)),
-          pct_exact: pctExact,
-          pct_formatted: `${Number(pctExact.toFixed(1))}%`,
-          sample_quotes_attributed: row.sample_quotes_attributed || null,
-        };
-      })
-      .sort((a, b) => b.count - a.count);
-
-    // -------------------------------------------------------------------------
-    // INTENT BREAKDOWN (aggregated across all theme rows)
-    // -------------------------------------------------------------------------
-    const aggregatedIntents = {
+    const intentCounts = {
       high_intent_blocked: 0,
       occasion_waiting: 0,
       price_monitoring: 0,
       bookmarking_inspiration: 0,
       comparison_shortlisting: 0,
+      noise: 0
     };
 
-    themeRows.forEach((row) => {
-      const ib = row.intent_breakdown || {};
-      Object.keys(aggregatedIntents).forEach((key) => {
-        aggregatedIntents[key] += Number(ib[key] || 0);
-      });
+    // Initialize maps
+    Object.keys(CANONICAL_LABELS).forEach(k => {
+      themeCounts[k] = 0;
+      themeQuotes[k] = [];
+      themeSegments[k] = {
+        'Ethnic Wear': 0, 'Western Wear': 0, 'Dresses': 0,
+        'Footwear': 0, 'General Fashion': 0
+      };
     });
 
-    const totalIntentSignals = Object.values(aggregatedIntents).reduce(
-      (sum, value) => sum + value, 0
-    );
+    let totalRawAnalyzed = 0;
+    let totalFrictionCount = 0;
+    let noiseCount = 0;
+    let unclassifiedCount = 0;
+
+    allRecords.forEach(r => {
+      const platform = r.platform || 'unknown';
+      if (platformCounts[platform] !== undefined) {
+        platformCounts[platform]++;
+      }
+
+      let theme = r.theme;
+      const rating = r.rating;
+      const text = r.text || '';
+      const url = r.url || '';
+
+      if (theme === null || theme === undefined) {
+        unclassifiedCount++;
+        return;
+      }
+
+      // Safeguard: exclude rating >= 4 or rating = null for reviews
+      if (isExcludedByRating(platform, rating)) {
+        theme = 'unrelated_other';
+      }
+
+      themeCounts[theme]++;
+      totalRawAnalyzed++;
+
+      if (FRICTION_THEME_KEYS.has(theme)) {
+        totalFrictionCount++;
+      } else {
+        noiseCount++;
+      }
+
+      // Segment breakdown
+      const cat = getCategory(text);
+      themeSegments[theme][cat]++;
+
+      // Quote collection
+      if (themeQuotes[theme].length < 8 && text.length > 25) {
+        const sentences = text.split(/[.!?]/).map(s => s.trim()).filter(s => s.length > 20);
+        const quote = sentences.length > 0 ? sentences[0] : text.substring(0, 200).trim();
+        if (!themeQuotes[theme].some(q => q.text === quote)) {
+          themeQuotes[theme].push({
+            text: normalizeText(quote.substring(0, 200)),
+            platform: platform === 'playstore' ? 'Play Store' : (platform === 'appstore' ? 'App Store' : platform.charAt(0).toUpperCase() + platform.slice(1)),
+            url: url
+          });
+        }
+      }
+
+      // Intent breakdown
+      const intent = THEME_TO_INTENT[theme] || 'no_clear_intent';
+      if (intentCounts[intent] !== undefined) {
+        intentCounts[intent]++;
+      }
+    });
+
+    // Formatting insights array
+    const insights = Object.keys(CANONICAL_LABELS)
+      .filter(k => k !== 'unrelated_other')
+      .map(k => {
+        const count = themeCounts[k];
+        const pctExact = totalFrictionCount > 0 ? (count / totalFrictionCount) * 100 : 0;
+        const label = CANONICAL_LABELS[k];
+        return {
+          id: k,
+          theme: k,
+          theme_label: label,
+          label: label,
+          mention_count: count,
+          count: count,
+          pct: Number(pctExact.toFixed(1)),
+          pct_exact: pctExact,
+          pct_formatted: `${Number(pctExact.toFixed(1))}%`,
+          sample_quotes_attributed: JSON.stringify(themeQuotes[k]),
+        };
+      })
+      .sort((a, b) => b.count - a.count);
+
+    const totalIntentSignals = intentCounts.high_intent_blocked +
+                               intentCounts.occasion_waiting +
+                               intentCounts.price_monitoring +
+                               intentCounts.bookmarking_inspiration +
+                               intentCounts.comparison_shortlisting;
 
     const INTENT_DISPLAY = [
-      { id: 'high_intent_blocked',    label: 'High intent, blocked by uncertainty',   count: aggregatedIntents.high_intent_blocked },
-      { id: 'occasion_waiting',       label: 'Waiting for an occasion or event',       count: aggregatedIntents.occasion_waiting },
-      { id: 'price_monitoring',       label: 'Monitoring for a price drop or deal',    count: aggregatedIntents.price_monitoring },
-      { id: 'bookmarking_inspiration',label: 'Bookmarking / inspiration only',         count: aggregatedIntents.bookmarking_inspiration },
-      { id: 'comparison_shortlisting',label: 'Comparing options before deciding',      count: aggregatedIntents.comparison_shortlisting },
+      { id: 'high_intent_blocked',    label: 'High intent, blocked by uncertainty',   count: intentCounts.high_intent_blocked },
+      { id: 'occasion_waiting',       label: 'Waiting for an occasion or event',       count: intentCounts.occasion_waiting },
+      { id: 'price_monitoring',       label: 'Monitoring for a price drop or deal',    count: intentCounts.price_monitoring },
+      { id: 'bookmarking_inspiration',label: 'Bookmarking / inspiration only',         count: intentCounts.bookmarking_inspiration },
+      { id: 'comparison_shortlisting',label: 'Comparing options before deciding',      count: intentCounts.comparison_shortlisting },
     ];
 
     const intents = INTENT_DISPLAY.map((item) => {
@@ -176,31 +242,39 @@ export async function GET() {
       };
     });
 
+    const PLATFORM_DISPLAY = {
+      playstore: 'Play Store',
+      appstore: 'App Store',
+      reddit: 'Reddit',
+      youtube: 'YouTube',
+    };
+
+    const platforms = Object.keys(platformCounts).map(k => ({
+      name: PLATFORM_DISPLAY[k] || k,
+      count: platformCounts[k]
+    })).sort((a, b) => b.count - a.count);
+
+    const liveRawCount = allRecords.length;
+    const dataIsCurrent = (Date.now() - new Date(lastClassifiedAt).getTime()) < 24 * 60 * 60 * 1000;
+
     return NextResponse.json({
-      // ---- Core discovery metrics (all from same insights snapshot) ----
       total_raw_analyzed: totalRawAnalyzed,
       total_friction_count: totalFrictionCount,
       goal_relevant_signals: totalFrictionCount,
       noise_count: noiseCount,
       filtered_out_of_scope: noiseCount,
-      unclassified_count: unclassifiedCount,     // records ingested but not yet classified
+      unclassified_count: unclassifiedCount,
       total_intent_signals: totalIntentSignals,
 
-      // ---- Freshness indicators ----
       last_classified_at: lastClassifiedAt,
       data_is_current: dataIsCurrent,
-      live_raw_count: liveRawCount,              // current raw_feedback row count
-      insights_snapshot_total: totalRawAnalyzed, // what the insights table represents
+      live_raw_count: liveRawCount,
+      insights_snapshot_total: totalRawAnalyzed,
 
-      // ---- Discovery insights ----
       insights,
       intents,
-
-      // ---- Source distribution (from live raw_feedback) ----
       platforms,
       source_mix: platforms.map((p) => `${p.name}: ${p.count}`).join(', '),
-
-      // ---- Metadata ----
       updated_at: new Date().toISOString(),
     });
   } catch (err) {

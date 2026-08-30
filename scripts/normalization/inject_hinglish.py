@@ -56,7 +56,8 @@ for idx, review in enumerate(hinglish_reviews):
         "platform": review["platform"],
         "is_processed": False, # Important: So it gets picked up by process_insights.py
         "classification_method": None,
-        "theme": None
+        "theme": None,
+        "rating": 1
     }
     
     try:
