@@ -346,7 +346,9 @@ def classify_text_heuristically(text: str, keyword: str) -> dict:
         "see through", "see-through", "fabric quality", "fabric is", "material is",
         "kapda", "cloth quality", "sheer fabric", "transparent", "lining missing",
         "no lining", "thin material", "poor quality material", "cheap fabric",
-        "material looks", "kapda kaisa", "kaisi quality", "material kaisa", "fabric", "material"
+        "material looks", "fabric poor", "fabric bad", "material poor", "material bad",
+        "cheap material", "poor quality", "bad quality", "thin fabric", "thin material",
+        "stitching", "kapda kaisa", "kaisi quality", "material kaisa"
     ]
     if any(w in t_lower or w in kw_lower for w in fabric_signals):
         return _make_heuristic_result("fabric_quality_ambiguity", True, "high_intent_blocked", text)
@@ -355,10 +357,12 @@ def classify_text_heuristically(text: str, keyword: str) -> dict:
     # STEP 6: Photo vs. reality discrepancy (pre-purchase fear)
     # -----------------------------------------------------------------------
     photo_signals = [
-        "different from photo", "different from picture", "different in real",
-        "color different", "colour different", "not like image", "misleading photo",
-        "looks different", "not what i expected", "shade different",
-        "photo pe alag", "image se alag", "photo", "picture", "image"
+        "different from photo", "different from picture", "different from image",
+        "look different", "different colour", "different color", "not same as picture",
+        "photo vs", "image vs", "colour discrepancy", "color discrepancy", "reality mismatch",
+        "not like photo", "not like picture", "not like image", "misleading photo",
+        "looks different", "not what i expected", "shade alag", "photo pe alag", "image se alag",
+        "photo alag", "picture alag", "colour change", "color change"
     ]
     if any(w in t_lower or w in kw_lower for w in photo_signals):
         return _make_heuristic_result("visual_reality_discrepancy", True, "high_intent_blocked", text)
